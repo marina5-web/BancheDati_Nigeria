@@ -1,0 +1,16 @@
+# Carico il dataset dell'agricoltura e lo salvo in un oggetto chiamato data_agri
+
+```{r}
+install.packages("haven")
+library(haven)
+```
+
+
+```{r}
+data_agri <- read_dta("data/raw/secta3i_harvestw5.dta")
+```
+
+
+```{r}
+summary(data_agri)
+```
