@@ -2,15 +2,47 @@
 
 ```{r}
 install.packages("haven")
+```
+
+```{r}
 library(haven)
 ```
 
-
 ```{r}
-data_agri <- read_dta("data/raw/secta3i_harvestw5.dta")
+data_agri <- read_dta("progetto_poverta_nigeria/data/raw/secta3i_harvestw5.dta")
 ```
 
 
 ```{r}
 summary(data_agri)
+```
+
+
+```{r}
+library(dplyr)
+data_agri |> count(sa3iq9a)
+```
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+```
+
+
+```{r}
+data_agri <- data_agri |> 
+  mutate(classe_risposta = cut(sa3iq9a, 
+                               breaks = c(0, 0.5, 1, 1.5, 5, Inf), 
+                               labels = c("0-0.5", "0.5-1", "1-1.5", "1.5-5", ">5")))
+```
+
+
+```{r}
+ggplot(data_agri, aes(x = classe_risposta)) +
+  geom_bar(fill = "steelblue", color = "white") +
+  labs(title = "Distribuzione delle risposte (Variabile sa3iq9a)",
+       x = "Classi di valore",
+       y = "Numero di osservazioni (Frequenza)") +
+  theme_minimal()
 ```
