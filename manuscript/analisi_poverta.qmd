@@ -1,7 +1,7 @@
 # Carico il dataset dell'agricoltura e lo salvo in un oggetto chiamato data_agri
 
 ```{r}
-install.packages("haven")
+#install.packages("haven", "dplyr", "ggplot2")
 ```
 
 ```{r}
@@ -9,7 +9,8 @@ library(haven)
 ```
 
 ```{r}
-data_agri <- read_dta("progetto_poverta_nigeria/data/raw/secta3i_harvestw5.dta")
+data_agri <- read_dta("data/raw/secta3i_harvestw5.dta")
+data_agri2 <- read_dta("data/raw/secta11c2_harvestw5.dta")
 ```
 
 
@@ -39,10 +40,22 @@ data_agri <- data_agri |>
 
 
 ```{r}
-ggplot(data_agri, aes(x = classe_risposta)) +
+ggplot2:(data_agri, aes(x = classe_risposta)) +
   geom_bar(fill = "steelblue", color = "white") +
   labs(title = "Distribuzione delle risposte (Variabile sa3iq9a)",
        x = "Classi di valore",
        y = "Numero di osservazioni (Frequenza)") +
   theme_minimal()
+```
+
+```{r}
+data_agri2 <- data_agri2 %>%
+rename(pesticidi= s11c2q3 ,
+ animali_traino= s11c2q14, 
+ attrezzature= s11c2q20 )
+```
+
+
+```
+
 ```
