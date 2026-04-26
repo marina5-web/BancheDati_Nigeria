@@ -22,10 +22,45 @@ Nonostante questo, l'uso di sementi resistenti e il trasferimento di denaro dai 
 
 ## Domande di ricerca
 
+#### *quale dei due fattori incide maggiormente sulla perdita di raccolto?: efficienza del raccolto vs conservazione del raccolto*
+
 #### *Esistono differenze significative nell'evoluzione della povertà stagionale tra le zone agro-ecologiche del Nord e del Sud della Nigeria?*
 
-#### *Quali sono le principali strategie di adattamento adottate dalle famiglie rurali durante i mesi di magra e come si sono evolute nel decennio studiato?*
+#### *Quali sono le principali strategie di adattamento adottate dalle famiglie rurali durante i mesi di magra e quali aiutano a ridurre maggiormente la vulnerabilità?*
 
-#### *L'accesso a fonti di reddito non agricole e alle rimesse dai centri urbani ha ridotto la vulnerabilità stagionale delle famiglie rurali nigeriane nel corso del tempo?*
+domanda differenza efficienza raccolta - efficienza conservazione
 
-#### *In che modo l'aumento della frequenza di shock climatici (alluvioni e siccità) registrato tra il 2010 e il 2019 ha alterato i cicli tradizionali di povertà stagionale?*
+- sa3iq7_1 (was the area harvested of crop on plot less than the area planted?)
+- sa3iq8 (what percent of [plot] planted with [crop] was harvested?)
+domanda differenza efficienza raccolto - efficienza conservazione
+
+- sa3iq7_1 (was the area harvested of crop on plot less than the area planted?)
+- sa3iq8 (what percent of plot planted with crop was harvested?)
+## da trovare domande su prodotto perso dopo raccolto
+
+domanda strategie di adattamento
+
+variabile dipendente:
+- sa3iq9a (how much crop in total did HH harvest from plot? (quantity))
+
+variabili indipendenti:
+- s11c2q3 (did HH use pesticide (excluding herbicide) on plot during the 2023-24 agricultural season?)
+- s11c2q14 (did HH use animals for traction on plot in the 2023-24 agricultural season?)
+- s11c2q20 (did HH use any equipment/machines on [plot] in 2023/24 agricultural season)
+
+domanda differenze nord-sud
+
+variabile dipendente:
+- sa3iq9a (how much crop in total did HH harvest from plot? (quantity)) per zone (zone code)
+
+variabili indipendenti:
+- hd_63 (during the last 12 months, how many months did [name] work in this employment)
+## ci sono domande specifiche su ogni mese dal 2017 al 2019, capire come includerle (hd_63_0 - hd_63_23)
+- hd_18 (what is the name reason) [name] did not work at this activity in the last 7 days?
+- ## intero file nup_phx_mod_n su perdite dovute a shock
+  ### mantenere da 10 a 14 shockcode per shock climatici
+- scegliere tra:
+  - hs_08a (HH worried about not having enough food to eat in the last 30 days)
+  - hs_08b (HH were unable to eat healthy and nutritious/preferred foods in the last 30 days)
+  - hs_08d (HH had to skip a meal in the last 30 days)
+  - hs_08e (HH ate less than you thought you should in the last 30 days)
