@@ -28,10 +28,6 @@ Nonostante questo, l'uso di sementi resistenti e il trasferimento di denaro dai 
 
 #### *Quali sono le principali strategie di adattamento adottate dalle famiglie rurali durante i mesi di magra e quali aiutano a ridurre maggiormente la vulnerabilità?*
 
-domanda differenza efficienza raccolta - efficienza conservazione
-
-- sa3iq7_1 (was the area harvested of crop on plot less than the area planted?)
-- sa3iq8 (what percent of [plot] planted with [crop] was harvested?)
 domanda differenza efficienza raccolto - efficienza conservazione
 
 - sa3iq7_1 (was the area harvested of crop on plot less than the area planted?)
@@ -41,26 +37,20 @@ domanda differenza efficienza raccolto - efficienza conservazione
 domanda strategie di adattamento
 
 variabile dipendente:
-- sa3iq9a (how much crop in total did HH harvest from plot? (quantity))
+- sa3iq9a (how much crop in total did HH harvest from plot? (quantity)) (FATTO)
 
 variabili indipendenti:
 - s11c2q3 (did HH use pesticide (excluding herbicide) on plot during the 2023-24 agricultural season?)
 - s11c2q14 (did HH use animals for traction on plot in the 2023-24 agricultural season?)
 - s11c2q20 (did HH use any equipment/machines on [plot] in 2023/24 agricultural season)
+(FATTO)
 
 domanda differenze nord-sud
 
 variabile dipendente:
-- sa3iq9a (how much crop in total did HH harvest from plot? (quantity)) per zone (zone code)
+- sa3iq9a (how much crop in total did HH harvest from plot? (quantity)) per zone (zone code) (FATTO)
 
 variabili indipendenti:
-- hd_63 (during the last 12 months, how many months did [name] work in this employment)
-## ci sono domande specifiche su ogni mese dal 2017 al 2019, capire come includerle (hd_63_0 - hd_63_23)
-- hd_18 (what is the name reason) [name] did not work at this activity in the last 7 days?
-- ## intero file nup_phx_mod_n su perdite dovute a shock
-  ### mantenere da 10 a 14 shockcode per shock climatici
-- scegliere tra:
-  - hs_08a (HH worried about not having enough food to eat in the last 30 days)
-  - hs_08b (HH were unable to eat healthy and nutritious/preferred foods in the last 30 days)
-  - hs_08d (HH had to skip a meal in the last 30 days)
-  - hs_08e (HH ate less than you thought you should in the last 30 days)
+- hd_18 (what is the main reason [name] did not work at this activity in the last 7 days?) 
+- file phx (FATTO)
+- hs_08e (HH ate less than you thought you should in the last 30 days)
