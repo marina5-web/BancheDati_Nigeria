@@ -40,7 +40,7 @@ data_agri <- data_agri |>
 
 
 ```{r}
-ggplot2:(data_agri, aes(x = classe_risposta)) +
+ggplot (data_agri, aes(x = classe_risposta)) +
   geom_bar(fill = "steelblue", color = "white") +
   labs(title = "Distribuzione delle risposte (Variabile sa3iq9a)",
        x = "Classi di valore",
@@ -53,4 +53,52 @@ data_agri2 <- data_agri2 %>%
 rename(pesticidi= s11c2q3 ,
  animali_traino= s11c2q14, 
  attrezzature= s11c2q20 )
+```
+
+```{r}
+data_agri2 %>%
+  # 1. Filtriamo via i valori mancanti (NA)
+  filter(!is.na(pesticidi)) %>%
+  # 2. Iniziamo il grafico
+  ggplot(aes(x = as_factor(pesticidi))) +
+  geom_bar(fill = "steelblue", color = "white") +
+  labs(
+    title = "Distribuzione delle risposte per la variabile pesticidi",
+    subtitle = "Esclusi i valori mancanti",
+    x = "Risposta",
+    y = "Frequenza"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+data_agri2 %>%
+  # 1. Filtriamo via i valori mancanti (NA)
+  filter(!is.na(animali_traino)) %>%
+  # 2. Iniziamo il grafico
+  ggplot(aes(x = as_factor(animali_traino))) +
+  geom_bar(fill = "steelblue", color = "white") +
+  labs(
+    title = "Distribuzione delle risposte per la variabile animali da traino",
+    subtitle = "Esclusi i valori mancanti",
+    x = "Risposta",
+    y = "Frequenza"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+data_agri2 %>%
+  # 1. Filtriamo via i valori mancanti (NA)
+  filter(!is.na(attrezzature)) %>%
+  # 2. Iniziamo il grafico
+  ggplot(aes(x = as_factor(attrezzature))) +
+  geom_bar(fill = "steelblue", color = "white") +
+  labs(
+    title = "Distribuzione delle risposte per la variabile attrezzature",
+    subtitle = "Esclusi i valori mancanti",
+    x = "Risposta",
+    y = "Frequenza"
+  ) +
+  theme_minimal()
 ```
