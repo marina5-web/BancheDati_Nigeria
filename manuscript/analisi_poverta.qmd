@@ -67,5 +67,46 @@ data_agri2 %>%
   theme_minimal()
 ```
 
-```{
+
+```{r}
+# 1. IL MERGE (Uniamo i dataset)
+dataset_completo <- inner_join(data_agri, data_agri2, by = c("hhid", "plotid"))
+
+# 2. TRASFORMAZIONE IN DUMMY (La pulizia finale)
+dataset_pulito <- dataset_completo %>%
+  mutate(
+    # Creiamo le nuove variabili dummy (0 e 1)
+    # Se il valore era 1 (YES) resta 1, altrimenti (se era 2 o altro) diventa 0
+    pesticidi_dummy = ifelse(pesticidi == 1, 1, 0),
+    animali_dummy = ifelse(animali_traino == 1, 1, 0),
+    attrezzature_dummy = ifelse(attrezzature == 1, 1, 0),
+    
+    # Rinominiamo al volo anche il raccolto per comodità
+    raccolto_kg = sa3iq6i
+  ) %>%
+  # Togliamo le righe dove il contadino non ha dichiarato il raccolto (NA)
+  filter(!is.na(raccolto_kg))%>%
+# ECCO IL LIMITE: Togliamo i 17 "super-contadini" oltre i 5000 kg
+filter(raccolto_kg < 5000)
+
+
+# 3. LE REGRESSIONI BIVARIATE (Opzionali, ma utilissime per la presentazione)
+summary(lm(raccolto_kg ~ pesticidi_dummy, data = dataset_pulito))
+summary(lm(raccolto_kg ~ animali_dummy, data = dataset_pulito))
+summary(lm(raccolto_kg ~ attrezzature_dummy, data = dataset_pulito))
+
+
+# 4. LA REGRESSIONE MULTIPLA (Il tuo modello finale)
+modello_finale <- lm(raccolto_kg ~ pesticidi_dummy + animali_dummy + attrezzature_dummy, 
+                     data = dataset_pulito)
+
+# Vediamo i risultati!
+summary(modello_finale)
+``````
+
+```{r}
+install.packages("sjPlot")
+library(sjPlot)
+tab_model(modello_finale) # Crea una tabella HTML bellissima e pronta per la tesi/report
 ```
+
