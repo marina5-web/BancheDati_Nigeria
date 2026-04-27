@@ -68,6 +68,7 @@ data_agri2 %>%
 ```
 
 
+
 ```{r}
 # 1. IL MERGE (Uniamo i dataset)
 dataset_completo <- inner_join(data_agri, data_agri2, by = c("hhid", "plotid"))
@@ -75,38 +76,47 @@ dataset_completo <- inner_join(data_agri, data_agri2, by = c("hhid", "plotid"))
 # 2. TRASFORMAZIONE IN DUMMY (La pulizia finale)
 dataset_pulito <- dataset_completo %>%
   mutate(
-    # Creiamo le nuove variabili dummy (0 e 1)
-    # Se il valore era 1 (YES) resta 1, altrimenti (se era 2 o altro) diventa 0
     pesticidi_dummy = ifelse(pesticidi == 1, 1, 0),
     animali_dummy = ifelse(animali_traino == 1, 1, 0),
     attrezzature_dummy = ifelse(attrezzature == 1, 1, 0),
-    
-    # Rinominiamo al volo anche il raccolto per comodità
-    raccolto_kg = sa3iq6i
+    raccolto_kg = sa3iq6_conv
   ) %>%
-  # Togliamo le righe dove il contadino non ha dichiarato il raccolto (NA)
-  filter(!is.na(raccolto_kg))%>%
-# ECCO IL LIMITE: Togliamo i 17 "super-contadini" oltre i 5000 kg
-filter(raccolto_kg < 5000)
+  filter(!is.na(raccolto_kg))
 
-
-# 3. LE REGRESSIONI BIVARIATE (Opzionali, ma utilissime per la presentazione)
+# 3. LE REGRESSIONI BIVARIATE
 summary(lm(raccolto_kg ~ pesticidi_dummy, data = dataset_pulito))
 summary(lm(raccolto_kg ~ animali_dummy, data = dataset_pulito))
 summary(lm(raccolto_kg ~ attrezzature_dummy, data = dataset_pulito))
-
-
-# 4. LA REGRESSIONE MULTIPLA (Il tuo modello finale)
-modello_finale <- lm(raccolto_kg ~ pesticidi_dummy + animali_dummy + attrezzature_dummy, 
-                     data = dataset_pulito)
-
-# Vediamo i risultati!
-summary(modello_finale)
-``````
-
-```{r}
-install.packages("sjPlot")
-library(sjPlot)
-tab_model(modello_finale) # Crea una tabella HTML bellissima e pronta per la tesi/report
+summary(lm(raccolto_kg ~ pesticidi_dummy + animali_dummy + attrezzature_dummy, data = dataset_pulito))
 ```
 
+```{r}
+library(ggplot2)
+
+# 1. BOXPLOT: PESTICIDI
+ggplot(dataset_pulito, aes(x = factor(pesticidi_dummy), y = raccolto_kg, fill = factor(pesticidi_dummy))) +
+  geom_boxplot() +
+  scale_x_discrete(labels = c("0" = "No", "1" = "Sì")) +
+  scale_fill_manual(values = c("0" = "lightgray", "1" = "steelblue")) +
+  labs(title = "Impatto Pesticidi", x = "Uso Pesticidi", y = "Raccolto (kg)") +
+  theme_minimal() + 
+  theme(legend.position = "none")
+
+# 2. BOXPLOT: ANIMALI DA TRAINO
+ggplot(dataset_pulito, aes(x = factor(animali_dummy), y = raccolto_kg, fill = factor(animali_dummy))) +
+  geom_boxplot() +
+  scale_x_discrete(labels = c("0" = "No", "1" = "Sì")) +
+  scale_fill_manual(values = c("0" = "lightgray", "1" = "darkgreen")) +
+  labs(title = "Impatto Animali da Traino", x = "Uso Animali", y = "Raccolto (kg)") +
+  theme_minimal() + 
+  theme(legend.position = "none")
+
+# 3. BOXPLOT: ATTREZZATURE
+ggplot(dataset_pulito, aes(x = factor(attrezzature_dummy), y = raccolto_kg, fill = factor(attrezzature_dummy))) +
+  geom_boxplot() +
+  scale_x_discrete(labels = c("0" = "No", "1" = "Sì")) +
+  scale_fill_manual(values = c("0" = "lightgray", "1" = "purple")) +
+  labs(title = "Impatto Attrezzature", x = "Uso Attrezzature", y = "Raccolto (kg)") +
+  theme_minimal() + 
+  theme(legend.position = "none")
+```
