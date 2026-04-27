@@ -6,53 +6,20 @@
 
 ```{r}
 library(haven)
-```
-
-```{r}
-data_agri <- read_dta("data/raw/secta3i_harvestw5.dta")
-data_agri2 <- read_dta("data/raw/secta11c2_harvestw5.dta")
-```
-
-
-```{r}
-summary(data_agri)
-```
-
-
-```{r}
-library(dplyr)
-data_agri |> count(sa3iq9a)
-```
-
-
-```{r}
 library(dplyr)
 library(ggplot2)
 ```
 
-
 ```{r}
-data_agri <- data_agri |> 
-  mutate(classe_risposta = cut(sa3iq9a, 
-                               breaks = c(0, 0.5, 1, 1.5, 5, Inf), 
-                               labels = c("0-0.5", "0.5-1", "1-1.5", "1.5-5", ">5")))
-```
-
-
-```{r}
-ggplot (data_agri, aes(x = classe_risposta)) +
-  geom_bar(fill = "steelblue", color = "white") +
-  labs(title = "Distribuzione delle risposte (Variabile sa3iq9a)",
-       x = "Classi di valore",
-       y = "Numero di osservazioni (Frequenza)") +
-  theme_minimal()
+data_agri <- read_dta("data/raw/secta3i_harvestw4.dta")
+data_agri2 <- read_dta("data/raw/secta11c2_harvestw4.dta")
 ```
 
 ```{r}
 data_agri2 <- data_agri2 %>%
-rename(pesticidi= s11c2q3 ,
- animali_traino= s11c2q14, 
- attrezzature= s11c2q20 )
+rename(pesticidi= s11c2q1 ,
+ animali_traino= s11c2q19, 
+ attrezzature= s11c2q27 )
 ```
 
 ```{r}
@@ -61,10 +28,9 @@ data_agri2 %>%
   filter(!is.na(pesticidi)) %>%
   # 2. Iniziamo il grafico
   ggplot(aes(x = as_factor(pesticidi))) +
-  geom_bar(fill = "steelblue", color = "white") +
+  geom_bar(fill = "#BB2E29", color = "white") +
   labs(
     title = "Distribuzione delle risposte per la variabile pesticidi",
-    subtitle = "Esclusi i valori mancanti",
     x = "Risposta",
     y = "Frequenza"
   ) +
@@ -77,10 +43,9 @@ data_agri2 %>%
   filter(!is.na(animali_traino)) %>%
   # 2. Iniziamo il grafico
   ggplot(aes(x = as_factor(animali_traino))) +
-  geom_bar(fill = "steelblue", color = "white") +
+  geom_bar(fill = "#BB2E29", color = "white") +
   labs(
     title = "Distribuzione delle risposte per la variabile animali da traino",
-    subtitle = "Esclusi i valori mancanti",
     x = "Risposta",
     y = "Frequenza"
   ) +
@@ -93,12 +58,14 @@ data_agri2 %>%
   filter(!is.na(attrezzature)) %>%
   # 2. Iniziamo il grafico
   ggplot(aes(x = as_factor(attrezzature))) +
-  geom_bar(fill = "steelblue", color = "white") +
+  geom_bar(fill = "#BB2E29", color = "white") +
   labs(
     title = "Distribuzione delle risposte per la variabile attrezzature",
-    subtitle = "Esclusi i valori mancanti",
     x = "Risposta",
     y = "Frequenza"
   ) +
   theme_minimal()
+```
+
+```{
 ```
