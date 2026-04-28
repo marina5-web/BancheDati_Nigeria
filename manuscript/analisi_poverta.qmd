@@ -84,12 +84,30 @@ dataset_pulito <- dataset_completo %>%
   filter(!is.na(raccolto_kg))
 
 # 3. LE REGRESSIONI BIVARIATE
-summary(lm(raccolto_kg ~ pesticidi_dummy, data = dataset_pulito))
-summary(lm(raccolto_kg ~ animali_dummy, data = dataset_pulito))
-summary(lm(raccolto_kg ~ attrezzature_dummy, data = dataset_pulito))
-summary(lm(raccolto_kg ~ pesticidi_dummy + animali_dummy + attrezzature_dummy, data = dataset_pulito))
+mod1 <- lm(raccolto_kg ~ pesticidi_dummy, data = dataset_pulito)
+mod2 <- lm(raccolto_kg ~ animali_dummy, data = dataset_pulito)
+mod3 <- lm(raccolto_kg ~ attrezzature_dummy, data = dataset_pulito)
+mod4 <- lm(raccolto_kg ~ pesticidi_dummy + animali_dummy + attrezzature_dummy, data = dataset_pulito)
+summary(mod1)
+summary(mod2)
+summary(mod3)
+summary(mod4)
 ```
 
+```{r}
+# Installa se non ce l'hai: 
+install.packages("modelsummary")
+library(modelsummary)
+
+# Crea una lista dei tuoi modelli
+modelli <- list(
+  "Solo Pesticidi" = mod1,
+  "Solo Animali"   = mod2,
+  "Solo Attrezzi"  = mod3)
+
+# Mostra la tabella
+modelsummary(modelli, stars = TRUE)
+```
 ```{r}
 library(ggplot2)
 
@@ -119,4 +137,39 @@ ggplot(dataset_pulito, aes(x = factor(attrezzature_dummy), y = raccolto_kg, fill
   labs(title = "Impatto Attrezzature", x = "Uso Attrezzature", y = "Raccolto (kg)") +
   theme_minimal() + 
   theme(legend.position = "none")
+```
+
+
+```{r}
+library(ggplot2)
+#library(gridExtra) # Per visualizzarli insieme, se vuoi
+
+# 1. SCATTERPLOT: PESTICIDI
+p1 <- ggplot(dataset_pulito, aes(x = pesticidi_dummy, y = raccolto_kg)) +
+  geom_jitter(alpha = 0.2, color = "steelblue", width = 0.05) + # alpha per la trasparenza
+  geom_smooth(method = "lm", color = "red", se = TRUE) +        # Linea di regressione
+  scale_x_continuous(breaks = c(0, 1), labels = c("No", "Sì")) +
+  labs(title = "Relazione Raccolto - Pesticidi", x = "Pesticidi", y = "Raccolto (kg)") +
+  theme_minimal()
+
+# 2. SCATTERPLOT: ANIMALI DA TRAINO
+p2 <- ggplot(dataset_pulito, aes(x = animali_dummy, y = raccolto_kg)) +
+  geom_jitter(alpha = 0.2, color = "darkgreen", width = 0.05) +
+  geom_smooth(method = "lm", color = "red", se = TRUE) +
+  scale_x_continuous(breaks = c(0, 1), labels = c("No", "Sì")) +
+  labs(title = "Relazione Raccolto - Animali", x = "Animali da Traino", y = "Raccolto (kg)") +
+  theme_minimal()
+
+# 3. SCATTERPLOT: ATTREZZATURE
+p3 <- ggplot(dataset_pulito, aes(x = attrezzature_dummy, y = raccolto_kg)) +
+  geom_jitter(alpha = 0.2, color = "purple", width = 0.05) +
+  geom_smooth(method = "lm", color = "red", se = TRUE) +
+  scale_x_continuous(breaks = c(0, 1), labels = c("No", "Sì")) +
+  labs(title = "Relazione Raccolto - Attrezzature", x = "Attrezzature", y = "Raccolto (kg)") +
+  theme_minimal()
+
+# Visualizza i grafici
+print(p1)
+print(p2)
+print(p3)
 ```
