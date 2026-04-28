@@ -13,20 +13,69 @@ library(ggplot2)
 ```{r}
 data_agri <- read_dta("data/raw/secta3i_harvestw4.dta")
 data_agri2 <- read_dta("data/raw/secta11c2_harvestw4.dta")
+data_agri3 <- read_dta("data/raw/secta1_harvestw4.dta")
 ```
 
 ```{r}
+#rinominiamo le variabili di interesse per renderle più leggibili
 data_agri2 <- data_agri2 %>%
 rename(pesticidi= s11c2q1 ,
  animali_traino= s11c2q19, 
  attrezzature= s11c2q27 )
+ data_agri3 <- data_agri3 %>%
+  rename(superficie = sa1q11)
 ```
 
 ```{r}
-data_agri2 %>%
-  # 1. Filtriamo via i valori mancanti (NA)
-  filter(!is.na(pesticidi)) %>%
-  # 2. Iniziamo il grafico
+# Dataset 1: Calcoliamo il raccolto totale per ogni campo
+data_agri_pulito <- data_agri %>%
+  group_by(hhid, plotid) %>% 
+  summarise(
+    raccolto_totale = sum(sa3iq6_conv, na.rm = TRUE),
+    .groups = 'drop' # Questo serve per "liberare" il dataset dopo l'operazione
+  )
+
+  # FUNZIONE DI CONTROLLO
+controllo <- data_agri_pulito %>%
+  count(hhid, plotid) %>%
+  filter(n > 1) 
+  print(controllo)
+```
+
+```{r}
+# Per il Dataset 2 (Pesticidi e Animali)
+data_agri2_pulito <- data_agri2 %>%
+  group_by(hhid, plotid) %>%
+  summarise(
+    pesticidi = max(pesticidi, na.rm = TRUE),
+    animali_traino = max(animali_traino, na.rm = TRUE),
+    attrezzature = max(attrezzature, na.rm = TRUE),
+    .groups = 'drop'
+  )
+
+# Per il Dataset 3 (Ampiezza)
+data_agri3_pulito <- data_agri3 %>%
+  group_by(hhid, plotid) %>%
+  summarise(
+    # max con na.rm = TRUE ignora i NA e prende il numero se c'è
+    ampiezza = max(superficie, na.rm = TRUE),
+    .groups = 'drop'
+  ) %>%
+  # Rimuoviamo i campi dove non c'è proprio nessun dato (che max rende -Inf)
+  filter(is.finite(ampiezza) & ampiezza > 0)
+```
+
+```{r}
+#creazione del dataset finale unendo i tre dataset puliti
+dataset_finale <- data_agri_pulito %>%
+  inner_join(data_agri2_pulito, by = c("hhid", "plotid")) %>%
+  inner_join(data_agri3_pulito, by = c("hhid", "plotid"))
+dataset_finale$resa <- dataset_finale$raccolto_totale / dataset_finale$ampiezza  * 10000
+#dati espressi in kg per ettaro
+```
+
+```{r}
+dataset_finale %>%
   ggplot(aes(x = as_factor(pesticidi))) +
   geom_bar(fill = "#BB2E29", color = "white") +
   labs(
@@ -38,10 +87,7 @@ data_agri2 %>%
 ```
 
 ```{r}
-data_agri2 %>%
-  # 1. Filtriamo via i valori mancanti (NA)
-  filter(!is.na(animali_traino)) %>%
-  # 2. Iniziamo il grafico
+dataset_finale %>%
   ggplot(aes(x = as_factor(animali_traino))) +
   geom_bar(fill = "#BB2E29", color = "white") +
   labs(
@@ -53,10 +99,7 @@ data_agri2 %>%
 ```
 
 ```{r}
-data_agri2 %>%
-  # 1. Filtriamo via i valori mancanti (NA)
-  filter(!is.na(attrezzature)) %>%
-  # 2. Iniziamo il grafico
+dataset_finale %>%
   ggplot(aes(x = as_factor(attrezzature))) +
   geom_bar(fill = "#BB2E29", color = "white") +
   labs(
@@ -67,109 +110,32 @@ data_agri2 %>%
   theme_minimal()
 ```
 
-
-
 ```{r}
-# 1. IL MERGE (Uniamo i dataset)
-dataset_completo <- inner_join(data_agri, data_agri2, by = c("hhid", "plotid"))
-
-# 2. TRASFORMAZIONE IN DUMMY (La pulizia finale)
-dataset_pulito <- dataset_completo %>%
-  mutate(
-    pesticidi_dummy = ifelse(pesticidi == 1, 1, 0),
-    animali_dummy = ifelse(animali_traino == 1, 1, 0),
-    attrezzature_dummy = ifelse(attrezzature == 1, 1, 0),
-    raccolto_kg = sa3iq6_conv
-  ) %>%
-  filter(!is.na(raccolto_kg))
-
-# 3. LE REGRESSIONI BIVARIATE
-mod1 <- lm(raccolto_kg ~ pesticidi_dummy, data = dataset_pulito)
-mod2 <- lm(raccolto_kg ~ animali_dummy, data = dataset_pulito)
-mod3 <- lm(raccolto_kg ~ attrezzature_dummy, data = dataset_pulito)
-mod4 <- lm(raccolto_kg ~ pesticidi_dummy + animali_dummy + attrezzature_dummy, data = dataset_pulito)
+mod1 <- lm(resa ~ factor(pesticidi, levels = c(2, 1), labels = c("No", "Sì")), 
+                  data = dataset_finale)
 summary(mod1)
+```
+
+```{r}
+mod2 <- lm(resa ~ factor(animali_traino, levels = c(2, 1), labels = c("No", "Sì")), 
+                  data = dataset_finale)
 summary(mod2)
+```
+
+```{r}
+mod3 <- lm(resa ~ factor(attrezzature, levels = c(2, 1), labels = c("No", "Sì")), 
+                  data = dataset_finale)
 summary(mod3)
-summary(mod4)
 ```
 
 ```{r}
-# Installa se non ce l'hai: 
-install.packages("modelsummary")
-library(modelsummary)
+# Modello multiplo
+mod_totale <- lm(resa ~ factor(pesticidi, levels = c(2, 1), labels = c("No", "Sì")) + 
+                        factor(animali_traino, levels = c(2, 1), labels = c("No", "Sì")) + 
+                        factor(attrezzature, levels = c(2, 1), labels = c("No", "Sì")), 
+                 data = dataset_finale)
 
-# Crea una lista dei tuoi modelli
-modelli <- list(
-  "Solo Pesticidi" = mod1,
-  "Solo Animali"   = mod2,
-  "Solo Attrezzi"  = mod3)
-
-# Mostra la tabella
-modelsummary(modelli, stars = TRUE)
-```
-```{r}
-library(ggplot2)
-
-# 1. BOXPLOT: PESTICIDI
-ggplot(dataset_pulito, aes(x = factor(pesticidi_dummy), y = raccolto_kg, fill = factor(pesticidi_dummy))) +
-  geom_boxplot() +
-  scale_x_discrete(labels = c("0" = "No", "1" = "Sì")) +
-  scale_fill_manual(values = c("0" = "lightgray", "1" = "steelblue")) +
-  labs(title = "Impatto Pesticidi", x = "Uso Pesticidi", y = "Raccolto (kg)") +
-  theme_minimal() + 
-  theme(legend.position = "none")
-
-# 2. BOXPLOT: ANIMALI DA TRAINO
-ggplot(dataset_pulito, aes(x = factor(animali_dummy), y = raccolto_kg, fill = factor(animali_dummy))) +
-  geom_boxplot() +
-  scale_x_discrete(labels = c("0" = "No", "1" = "Sì")) +
-  scale_fill_manual(values = c("0" = "lightgray", "1" = "darkgreen")) +
-  labs(title = "Impatto Animali da Traino", x = "Uso Animali", y = "Raccolto (kg)") +
-  theme_minimal() + 
-  theme(legend.position = "none")
-
-# 3. BOXPLOT: ATTREZZATURE
-ggplot(dataset_pulito, aes(x = factor(attrezzature_dummy), y = raccolto_kg, fill = factor(attrezzature_dummy))) +
-  geom_boxplot() +
-  scale_x_discrete(labels = c("0" = "No", "1" = "Sì")) +
-  scale_fill_manual(values = c("0" = "lightgray", "1" = "purple")) +
-  labs(title = "Impatto Attrezzature", x = "Uso Attrezzature", y = "Raccolto (kg)") +
-  theme_minimal() + 
-  theme(legend.position = "none")
+summary(mod_totale)
 ```
 
 
-```{r}
-library(ggplot2)
-#library(gridExtra) # Per visualizzarli insieme, se vuoi
-
-# 1. SCATTERPLOT: PESTICIDI
-p1 <- ggplot(dataset_pulito, aes(x = pesticidi_dummy, y = raccolto_kg)) +
-  geom_jitter(alpha = 0.2, color = "steelblue", width = 0.05) + # alpha per la trasparenza
-  geom_smooth(method = "lm", color = "red", se = TRUE) +        # Linea di regressione
-  scale_x_continuous(breaks = c(0, 1), labels = c("No", "Sì")) +
-  labs(title = "Relazione Raccolto - Pesticidi", x = "Pesticidi", y = "Raccolto (kg)") +
-  theme_minimal()
-
-# 2. SCATTERPLOT: ANIMALI DA TRAINO
-p2 <- ggplot(dataset_pulito, aes(x = animali_dummy, y = raccolto_kg)) +
-  geom_jitter(alpha = 0.2, color = "darkgreen", width = 0.05) +
-  geom_smooth(method = "lm", color = "red", se = TRUE) +
-  scale_x_continuous(breaks = c(0, 1), labels = c("No", "Sì")) +
-  labs(title = "Relazione Raccolto - Animali", x = "Animali da Traino", y = "Raccolto (kg)") +
-  theme_minimal()
-
-# 3. SCATTERPLOT: ATTREZZATURE
-p3 <- ggplot(dataset_pulito, aes(x = attrezzature_dummy, y = raccolto_kg)) +
-  geom_jitter(alpha = 0.2, color = "purple", width = 0.05) +
-  geom_smooth(method = "lm", color = "red", se = TRUE) +
-  scale_x_continuous(breaks = c(0, 1), labels = c("No", "Sì")) +
-  labs(title = "Relazione Raccolto - Attrezzature", x = "Attrezzature", y = "Raccolto (kg)") +
-  theme_minimal()
-
-# Visualizza i grafici
-print(p1)
-print(p2)
-print(p3)
-```
