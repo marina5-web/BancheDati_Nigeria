@@ -3,19 +3,21 @@ Analisi della povertà stagionale in Nigeria
 
 ```{r}
 #install.packages("haven", "dplyr", "ggplot2")
+#install.packages("here")
 ```
 
 ```{r}
 library(haven)
 library(dplyr)
 library(ggplot2)
+library(here)
 ```
 
 ```{r}
 #Rinominiamo i dataset
-data_agri <- read_dta("data/raw/secta3i_harvestw4.dta")
-data_agri2 <- read_dta("data/raw/secta11c2_harvestw4.dta")
-data_agri3 <- read_dta("data/raw/secta1_harvestw4.dta")
+data_agri  <- read_dta(here("data", "raw", "secta3i_harvestw4.dta"))
+data_agri2 <- read_dta(here("data", "raw", "secta11c2_harvestw4.dta"))
+data_agri3 <- read_dta(here("data", "raw", "secta1_harvestw4.dta"))
 ```
 
 ```{r}
