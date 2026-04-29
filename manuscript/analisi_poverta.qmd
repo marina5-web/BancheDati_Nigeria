@@ -208,29 +208,19 @@ library(forcats)
 ```
 
 ```{r}
-df <- read_dta("C://Users//marin//AppData//Local//Temp//150fdf64-0e7a-46d8-9f6c-fb3e542fa062_NGA_2018_GHSP-W4_v03_M_Stata12.zip.062//sect15a_harvestw4.dta")
+df <- read_dta("progetto_poverta_nigeria\\data\\raw\\sect15a_harvestw4.dta")
 ```
 
 ```{r}
-df_clean <- df |>
-```
-
-```{r}
-filter(shock_cd %in% c(10, 12, 13, 15)) |> 
-```
-
-```{r}
-filter(s15aq1 == 1) |> 
-```
-
-```{r}
-mutate(macro_zone = case_when(
+df_clean <- df |> 
+  filter(shock_cd %in% c(10, 12, 13, 15)) |> 
+  filter(s15aq1 == 1) |> 
+  mutate(macro_zone = case_when(
     zone %in% c(1, 2, 3) ~ "North",
     zone %in% c(4, 5, 6) ~ "South",
     TRUE ~ NA_character_
   ))
 ```
-  
 
 ```{r}
 table(df_clean$shock_cd, df_clean$macro_zone) |> 
