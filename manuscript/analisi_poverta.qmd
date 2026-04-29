@@ -21,9 +21,12 @@ data_agri3 <- read_dta("data/raw/secta1_harvestw4.dta")
 data_agri2 <- data_agri2 %>%
 rename(pesticidi= s11c2q1 ,
  animali_traino= s11c2q19, 
- attrezzature= s11c2q27 )
+ attrezzature= s11c2q27, 
+ fertilizzanti= s11dq1a
+ )
  data_agri3 <- data_agri3 %>%
-  rename(superficie = sa1q11)
+  rename(superficie = sa1q11, 
+  grandezza_prevista= prefilled_gps_area)
 ```
 
 ```{r}
@@ -50,6 +53,7 @@ data_agri2_pulito <- data_agri2 %>%
     pesticidi = max(pesticidi, na.rm = TRUE),
     animali_traino = max(animali_traino, na.rm = TRUE),
     attrezzature = max(attrezzature, na.rm = TRUE),
+    fertilizzanti = max(fertilizzanti, na.rm = TRUE),
     .groups = 'drop'
   )
 
@@ -57,11 +61,13 @@ data_agri2_pulito <- data_agri2 %>%
 data_agri3_pulito <- data_agri3 %>%
   group_by(hhid, plotid) %>%
   summarise(
-    # max con na.rm = TRUE ignora i NA e prende il numero se c'è
-    ampiezza = max(superficie, na.rm = TRUE),
+    # Proviamo a prendere il max della superficie, se è tutto NA cerchiamo nella grandezza prevista
+    # Usiamo pmax per confrontare le due colonne riga per riga se necessario
+    ampiezza = max(c(superficie, grandezza_prevista), na.rm = TRUE),
     .groups = 'drop'
   ) %>%
-  # Rimuoviamo i campi dove non c'è proprio nessun dato (che max rende -Inf)
+  # La condizione finale: se non c'erano dati in nessuna delle due, 
+  # max() restituisce -Inf. Noi lo eliminiamo.
   filter(is.finite(ampiezza) & ampiezza > 0)
 ```
 
@@ -75,6 +81,18 @@ dataset_finale$resa <- dataset_finale$raccolto_totale / dataset_finale$ampiezza 
 ```
 
 ```{r}
+dataset_finale <- dataset_finale |>
+  filter(
+    is.finite(resa),
+    is.finite(ampiezza),
+    is.finite(pesticidi),
+    is.finite(animali_traino),
+    is.finite(attrezzature),
+    is.finite(fertilizzanti)
+  )
+```
+
+```{r}
 dataset_finale %>%
   ggplot(aes(x = as_factor(pesticidi))) +
   geom_bar(fill = "#BB2E29", color = "white") +
@@ -85,6 +103,7 @@ dataset_finale %>%
   ) +
   theme_minimal()
 ```
+
 
 ```{r}
 dataset_finale %>%
@@ -111,8 +130,23 @@ dataset_finale %>%
 ```
 
 ```{r}
+dataset_finale %>%
+  ggplot(aes(x = as_factor(fertilizzanti))) +
+  geom_bar(fill = "#BB2E29", color = "white") +
+  labs(
+    title = "Distribuzione delle risposte per la variabile pesticidi",
+    x = "Risposta",
+    y = "Frequenza"
+  ) +
+  theme_minimal()
+```
+
+```{r}
 mod1 <- lm(resa ~ factor(pesticidi, levels = c(2, 1), labels = c("No", "Sì")), 
                   data = dataset_finale)
+summary(dataset_finale$resa)
+sum(dataset_finale$resa == 0)
+hist(dataset_finale$resa, breaks = 200)
 summary(mod1)
 ```
 
@@ -132,10 +166,10 @@ summary(mod3)
 # Modello multiplo
 mod_totale <- lm(resa ~ factor(pesticidi, levels = c(2, 1), labels = c("No", "Sì")) + 
                         factor(animali_traino, levels = c(2, 1), labels = c("No", "Sì")) + 
-                        factor(attrezzature, levels = c(2, 1), labels = c("No", "Sì")), 
+                        factor(attrezzature, levels = c(2, 1), labels = c("No", "Sì")) + 
+                        factor(fertilizzanti, levels = c(2, 1), labels = c("No", "Sì")), 
                  data = dataset_finale)
 
 summary(mod_totale)
 ```
-
 
