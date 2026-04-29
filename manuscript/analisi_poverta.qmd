@@ -61,11 +61,15 @@ data_agri2_pulito <- data_agri2 %>%
 data_agri3_pulito <- data_agri3 %>%
   group_by(hhid, plotid) %>%
   summarise(
-    # Proviamo a prendere il max della superficie, se è tutto NA cerchiamo nella grandezza prevista
-    # Usiamo pmax per confrontare le due colonne riga per riga se necessario
-    ampiezza = max(c(superficie, grandezza_prevista), na.rm = TRUE),
+    # Logica: Se superficie non è NA, prendi quella. Altrimenti prendi grandezza_prevista.
+    # Usiamo first() o mean() per estrarre il valore del gruppo
+    ampiezza = ifelse(!is.na(first(superficie)), 
+                      first(superficie), 
+                      first(grandezza_prevista)),
     .groups = 'drop'
   ) %>%
+  # Eliminiamo le righe dove entrambi erano NA
+  filter(!is.na(ampiezza) & ampiezza > 0)%>%
   # La condizione finale: se non c'erano dati in nessuna delle due, 
   # max() restituisce -Inf. Noi lo eliminiamo.
   filter(is.finite(ampiezza) & ampiezza > 0)
@@ -80,6 +84,15 @@ dataset_finale$resa <- dataset_finale$raccolto_totale / dataset_finale$ampiezza 
 #dati espressi in kg per ettaro
 ```
 
+```{r}
+# Applichiamo il tetto a 5000 e togliamo le rese nulle
+dataset_finale <- dataset_finale %>% 
+  filter(resa > 0 & resa <= 5000)
+
+# Verifichiamo il nuovo massimo e il numero di osservazioni rimaste
+summary(dataset_finale$resa)
+nrow(dataset_finale)
+```
 ```{r}
 dataset_finale <- dataset_finale |>
   filter(
