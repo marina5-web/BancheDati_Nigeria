@@ -1,4 +1,5 @@
-# Carico il dataset dell'agricoltura e lo salvo in un oggetto chiamato data_agri
+Analisi della povertà stagionale in Nigeria
+
 
 ```{r}
 #install.packages("haven", "dplyr", "ggplot2")
@@ -11,13 +12,14 @@ library(ggplot2)
 ```
 
 ```{r}
+#Rinominiamo i dataset
 data_agri <- read_dta("data/raw/secta3i_harvestw4.dta")
 data_agri2 <- read_dta("data/raw/secta11c2_harvestw4.dta")
 data_agri3 <- read_dta("data/raw/secta1_harvestw4.dta")
 ```
 
 ```{r}
-#rinominiamo le variabili di interesse per renderle più leggibili
+#Rinominiamo le variabili di interesse 
 data_agri2 <- data_agri2 %>%
 rename(pesticidi= s11c2q1 ,
  animali_traino= s11c2q19, 
@@ -30,87 +32,74 @@ rename(pesticidi= s11c2q1 ,
 ```
 
 ```{r}
-# Dataset 1: Calcoliamo il raccolto totale per ogni campo
+# Pulizia del primo dataset
 data_agri_pulito <- data_agri %>%
   group_by(hhid, plotid) %>% 
   summarise(
     raccolto_totale = sum(sa3iq6_conv, na.rm = TRUE),
-    .groups = 'drop' # Questo serve per "liberare" il dataset dopo l'operazione
-  )
-  #elimino le righe dove il raccolto totale è zero o negativo
-data_agri_pulito <- data_agri_pulito %>%
+    .groups = 'drop')%>%
   filter(raccolto_totale > 0)
 ```
 
 ```{r}
-#dataset 2 
+# Pulizia del secondo dataset
 data_agri2_pulito <- data_agri2 %>%
-  # 1. TRASFORMAZIONE: Tutto ciò che non è 1 o 2 diventa NA (vuoto)
-  mutate(across(c(pesticidi, animali_traino, attrezzature, fertilizzanti, sector), 
-                ~ ifelse(. %in% c(1, 2), ., NA))) %>%
-  
-  # 2. RAGGRUPPAMENTO: Per famiglia e per campo
   group_by(hhid, plotid) %>%
-  
-  # 3. CONSOLIDAMENTO: Prendiamo il minimo tra 1 e 2 (Priorità al "Sì")
-  #Il si è 1, il no è 2. 1 è urban, 2 è rural
   summarise(
-    pesticidi = min(pesticidi, na.rm = TRUE),
+    pesticidi      = min(pesticidi, na.rm = TRUE),
     animali_traino = min(animali_traino, na.rm = TRUE),
-    attrezzature = min(attrezzature, na.rm = TRUE),
-    fertilizzanti = min(fertilizzanti, na.rm = TRUE),
-    #sector = min(sector, na.rm = TRUE),
+    attrezzature   = min(attrezzature, na.rm = TRUE),
+    fertilizzanti  = min(fertilizzanti, na.rm = TRUE),
     .groups = 'drop'
   ) %>%
-  
-  # 4. PULIZIA FINALE: Eliminiamo i record dove non c'è nessuna risposta valida
-  # (min() su soli NA restituisce Inf, quindi is.finite li elimina)
-  filter(is.finite(pesticidi), 
-        is.finite(animali_traino), 
-        is.finite(attrezzature), 
-        is.finite(fertilizzanti))
-        #is.finite(sector))
+  filter(
+    (pesticidi == 1      | pesticidi == 2),
+    (animali_traino == 1 | animali_traino == 2),
+    (attrezzature == 1   | attrezzature == 2),
+    (fertilizzanti == 1  | fertilizzanti == 2)
+  )
 ```
 
 ```{r}
-# Per il Dataset 3 (Ampiezza)
+# Pulizia del terzo dataset
 data_agri3_pulito <- data_agri3 %>%
   group_by(hhid, plotid) %>%
   summarise(
-    # Logica: Se superficie non è NA, prendi quella. Altrimenti prendi grandezza_prevista.
-    # Usiamo first() o mean() per estrarre il valore del gruppo
-    ampiezza = ifelse(!is.na(first(superficie)), 
-                      first(superficie), 
-                      first(grandezza_prevista)),
+    ampiezza = if_else(is.na(first(superficie)), 
+                       first(grandezza_prevista), 
+                       first(superficie)),
     .groups = 'drop'
   ) %>%
-  # Eliminiamo le righe dove entrambi erano NA
-  filter(!is.na(ampiezza) & ampiezza > 0)%>%
-  # La condizione finale: se non c'erano dati in nessuna delle due, 
-  # max() restituisce -Inf. Noi lo eliminiamo.
-  filter(is.finite(ampiezza) & ampiezza > 0)
+  filter(is.finite(ampiezza), ampiezza > 0)
 ```
 
 ```{r}
-#creazione del dataset finale unendo i tre dataset puliti
+#Creazione e pulizia del dataset finale
 dataset_finale <- data_agri_pulito %>%
   inner_join(data_agri2_pulito, by = c("hhid", "plotid")) %>%
   inner_join(data_agri3_pulito, by = c("hhid", "plotid"))
+
+#Creazione della variabile resa
 dataset_finale$resa <- dataset_finale$raccolto_totale / dataset_finale$ampiezza  * 10000
-#dati espressi in kg per ettaro
-```
+#Dati espressi in kg per ettaro
 
-```{r}
-# Applichiamo il tetto a 5000 e togliamo le rese nulle
+#Filtriamo i dati per eliminare valori di resa non plausibili
 dataset_finale <- dataset_finale %>% 
-  filter(resa > 0 & resa <= 5000)
-
-# Verifichiamo il nuovo massimo e il numero di osservazioni rimaste
-#summary(dataset_finale$resa)
-#nrow(dataset_finale)
+  filter(resa <= 5000)
 ```
 
 ```{r}
+#Dividiamo la variabile ampiezza in quartili per creare classi di ampiezza
+tagli <- quantile(dataset_finale$ampiezza, probs = c(0, 0.25, 0.5, 0.75, 1))
+
+dataset_finale$ampiezza_cat <- cut(dataset_finale$ampiezza, 
+                                   breaks = tagli, 
+                                   labels = c(1, 2, 3, 4), 
+                                   include.lowest = TRUE)
+```
+
+```{r}
+#Grafico della distribuzione delle risposte per la variabile pesticidi
 dataset_finale %>%
   ggplot(aes(x = factor(pesticidi, levels = c(1, 2), labels = c("Sì", "No")))) +
   geom_bar(fill = "#BB2E29", color = "white") +
@@ -124,6 +113,7 @@ dataset_finale %>%
 
 
 ```{r}
+#Grafico della distribuzione delle risposte per la variabile animali da traino
 dataset_finale %>%
   ggplot(aes(x = factor(animali_traino, levels = c(1, 2), labels = c("Sì", "No")))) +
   geom_bar(fill = "#BB2E29", color = "white") +
@@ -136,6 +126,7 @@ dataset_finale %>%
 ```
 
 ```{r}
+#Grafico della distribuzione delle risposte per la variabile attrezzature
 dataset_finale %>%
   ggplot(aes(x = factor(attrezzature, levels = c(1, 2), labels = c("Sì", "No")))) +
   geom_bar(fill = "#BB2E29", color = "white") +
@@ -148,6 +139,7 @@ dataset_finale %>%
 ```
 
 ```{r}
+#grafico della distribuzione delle risposte per la variabile fertilizzanti
 dataset_finale %>%
   ggplot(aes(x = factor(fertilizzanti, levels = c(1, 2), labels = c("Sì", "No")))) +
   geom_bar(fill = "#BB2E29", color = "white") +
@@ -159,54 +151,43 @@ dataset_finale %>%
   theme_minimal()
 ```
 
-
-
 ```{r}
+#analisi bivariata tra resa e pesticidi
 mod1 <- lm(resa ~ factor(pesticidi, levels = c(2, 1), labels = c("No", "Sì")), 
                   data = dataset_finale)
-summary(dataset_finale$resa)
-sum(dataset_finale$resa == 0)
-hist(dataset_finale$resa, breaks = 200)
 summary(mod1)
 ```
 
 ```{r}
+#analisi bivariata tra resa e animali da traino
 mod2 <- lm(resa ~ factor(animali_traino, levels = c(2, 1), labels = c("No", "Sì")), 
                   data = dataset_finale)
 summary(mod2)
 ```
 
 ```{r}
+#analisi bivariata tra resa e attrezzature
 mod3 <- lm(resa ~ factor(attrezzature, levels = c(2, 1), labels = c("No", "Sì")), 
                   data = dataset_finale)
 summary(mod3)
 ```
 
 ```{r}
+#analisi bivariata tra resa e fertilizzanti
 mod4 <- lm(resa ~ factor(fertilizzanti, levels = c(2, 1), labels = c("No", "Sì")), 
                   data = dataset_finale)
+summary(mod4)
 ```
 
-```{r}
-#creiamo classi di ampiezza
-# Calcoliamo i quartili (0%, 25%, 50%, 75%, 100%)
-tagli <- quantile(dataset_finale$ampiezza, probs = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
-
-# Creiamo la variabile fattore (1, 2, 3, 4)
-dataset_finale$ampiezza_cat <- cut(dataset_finale$ampiezza, 
-                                   breaks = tagli, 
-                                   labels = c(1, 2, 3, 4), 
-                                   include.lowest = TRUE)
-```
 
 ```{r}
 # Modello multiplo
-mod_totale <- lm((resa) ~ factor(pesticidi, levels = c(2, 1), labels = c("No", "Sì")) + 
+mod_totale <- lm((resa) ~ 
+factor(pesticidi, levels = c(2, 1), labels = c("No", "Sì")) + 
 factor(animali_traino, levels = c(2, 1), labels = c("No", "Sì")) + 
 factor(attrezzature, levels = c(2, 1), labels = c("No", "Sì")) + 
 factor(fertilizzanti, levels = c(2, 1), labels = c("No", "Sì"))+
-#factor(sector, levels = c(2, 1), labels = c("Rurale", "Urbana"))+
- factor(ampiezza_cat, levels = c(1, 2, 3, 4), labels = c("Q1", "Q2", "Q3", "Q4")),
+factor(ampiezza_cat, levels = c(1, 2, 3, 4), labels = c("Q1", "Q2", "Q3", "Q4")),
 data = dataset_finale)
 
 summary(mod_totale)
