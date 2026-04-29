@@ -10,14 +10,13 @@ Analisi della povertà stagionale in Nigeria
 library(haven)
 library(dplyr)
 library(ggplot2)
-library(here)
 ```
 
 ```{r}
 #Rinominiamo i dataset
-data_agri  <- read_dta(here("data", "raw", "secta3i_harvestw4.dta"))
-data_agri2 <- read_dta(here("data", "raw", "secta11c2_harvestw4.dta"))
-data_agri3 <- read_dta(here("data", "raw", "secta1_harvestw4.dta"))
+data_agri  <- read_dta("data", "raw", "secta3i_harvestw4.dta")
+data_agri2 <- read_dta("data", "raw", "secta11c2_harvestw4.dta")
+data_agri3 <- read_dta("data", "raw", "secta1_harvestw4.dta")
 ```
 
 ```{r}
@@ -87,7 +86,7 @@ dataset_finale$resa <- dataset_finale$raccolto_totale / dataset_finale$ampiezza 
 
 #Filtriamo i dati per eliminare valori di resa non plausibili
 dataset_finale <- dataset_finale %>% 
-  filter(resa <= 5000)
+filter(resa <= 5000)
 ```
 
 ```{r}
