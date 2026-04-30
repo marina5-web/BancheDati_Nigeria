@@ -20,6 +20,13 @@ library(tidyr)
 ```
 
 ```{r}
+#data_agri <- read_dta("progetto_poverta_nigeria\\data\\raw\\secta3i.dta")
+#data_agri2 <- read_dta("progetto_poverta_nigeria\\data\\raw\\secta11c2.dta")
+#data_agri3 <- read_dta("progetto_poverta_nigeria\\data\\raw\\secta1.dta")
+#df <- read_dta("progetto_poverta_nigeria\\data\\raw\\sect15a.dta")
+```
+
+```{r}
 links <- c(
   "secta1"    = "https://github.com/marina5-web/BancheDati_Nigeria/releases/download/v1.0/secta1_harvestw4.dta",
   "secta3i"   = "https://github.com/marina5-web/BancheDati_Nigeria/releases/download/v1.0/secta3i_harvestw4.dta",
@@ -140,6 +147,27 @@ dataset_finale$resa_cat <- cut(dataset_finale$resa,
                                 breaks = c(0, 50, 250, 1000, 5000), 
                                 labels = c(1, 2, 3, 4), 
                                 include.lowest = TRUE)
+
+
+# Divisioni in classi della variabile s3q8b
+data_agri4 <- data_agri4 %>%
+  mutate(
+    s3q8b_label = case_when(
+      s3q8b == 1 ~ "In vacanza",
+      s3q8b == 2 ~ "Malattia",
+      s3q8b == 3 ~ "Business chiuso temporaneamente",
+      s3q8b == 4 ~ "Sciopero, controversie di lavoro",
+      s3q8b == 5 ~ "Lavoro a turni, orario flessibile",
+      s3q8b == 6 ~ "Lavoro stagionale",
+      s3q8b == 8 ~ "Altro",
+      TRUE ~ NA_character_
+    )
+  )
+
+```
+
+```{r}
+
 ```
 
 SEZIONE 4 CREAZIONE DEI GRAFICI
@@ -196,6 +224,19 @@ dataset_finale %>%
   theme_minimal()
 ```
 
+```{r}
+# Grafico con etichette leggibili e NA rimossi
+ggplot(data_agri4 %>% filter(!is.na(s3q8b_label)), aes(x = s3q8b_label)) +
+  geom_bar(fill = "#BB2E29", color = "white") +
+  labs(
+    title = "Motivo per cui non ha lavorato negli ultimi 7 giorni",
+    x = "Motivazione",
+    y = "Numero di osservazioni"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 25, hjust = 1))
+```
+
 SEZIONE 5 ANALISI BIVARIATA
 
 ```{r}
@@ -240,35 +281,3 @@ data = dataset_finale)
 summary(mod_totale)
 ```
 
-Seconda domanda di ricerca
-
-```{r}
-data_agri4 <- read_dta("progetto_poverta_nigeria\\data\\raw\\sect3a_harvestw4.dta")
-data_agri4 <- data_agri4 %>%
-  mutate(
-    s3q8b_label = case_when(
-      s3q8b == 1 ~ "In vacanza",
-      s3q8b == 2 ~ "Malattia",
-      s3q8b == 3 ~ "Business chiuso temporaneamente",
-      s3q8b == 4 ~ "Sciopero, controversie di lavoro",
-      s3q8b == 5 ~ "Lavoro a turni, orario flessibile",
-      s3q8b == 6 ~ "Lavoro stagionale",
-      s3q8b == 8 ~ "Altro",
-      TRUE ~ NA_character_
-    )
-  )
-
-```
-
-```{r}
-# Grafico con etichette leggibili e NA rimossi
-ggplot(data_agri4 %>% filter(!is.na(s3q8b_label)), aes(x = s3q8b_label)) +
-  geom_bar(fill = "#BB2E29", color = "white") +
-  labs(
-    title = "Motivo per cui non ha lavorato negli ultimi 7 giorni",
-    x = "Motivazione",
-    y = "Numero di osservazioni"
-  ) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 25, hjust = 1))
-```
