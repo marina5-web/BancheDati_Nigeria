@@ -1,11 +1,11 @@
 Analisi della povertà stagionale in Nigeria
 
 ```{r}
-#install.packages("haven", "dplyr", "ggplot2")
-#install.packages("here")
-#install.packages("httr", "jsonlite")
-#install.packages(("forcats"))
-#install.packages("tidyr")
+install.packages("haven", "dplyr", "ggplot2")
+install.packages("here")
+install.packages("httr", "jsonlite")
+install.packages(("forcats"))
+install.packages("tidyr")
 ```
 
 ```{r}
@@ -20,40 +20,97 @@ library(tidyr)
 ```
 
 ```{r}
-library(here)
-library(haven)
-
-# 1. Incolla i link reali qui (quelli che iniziano con https://)
-links <- c(
-  "secta1"  = "https://github.com/marina5-web/BancheDati_Nigeria/releases/download/v1.0/secta1_harvestw4.dta",
-  "secta3i"  = "https://github.com/marina5-web/BancheDati_Nigeria/releases/download/v1.0/secta3i_harvestw4.dta",
-  "secta11c2" = "https://github.com/marina5-web/BancheDati_Nigeria/releases/download/v1.0/secta11c2_harvestw4.dta",
-  "sect15a" = "https://github.com/marina5-web/BancheDati_Nigeria/releases/download/v1.0/sect15a_harvestw4.dta"
-)
-
-# 2. Controllo cartella e Download Intelligente
-if(!dir.exists(here("data/raw"))) dir.create(here("data/raw"), recursive = TRUE)
-
-data_list <- lapply(names(links), function(x) {
-  dest <- here("data/raw", paste0(x, ".dta"))
-  
-  if(!file.exists(dest)) {
-    message(paste("Scarico", x, "..."))
-    download.file(links[x], dest, mode = "wb")
-  } else {
-    message(paste("File", x, "già presente, salto il download."))
-  }
-  
-  return(read_dta(dest))
-})
-
-# 3. Assegna i nomi ai tuoi dataframe
-data_agri <- data_list[[2]]
-data_agri2 <- data_list[[3]]
-data_agri3 <- data_list[[1]]
-df <- data_list[[4]]
+#tentativo di riproducibilità 
+# 1. DEFINIZIONE DELLE CERTELLE E DEI FILE
+#creiamo una nuova cartella DATA se non esiste già
+if (!dir.exists("data/raw")) {
+  dir.create("data/raw", recursive = TRUE)
+}
+#definiamo il nome del file che vogliamo usare
+url_15a <- "https://github.com/marina5-web/BancheDati_Nigeria/raw/refs/heads/main/data/raw/sect15a_harvestw4.dta"
+dest_15a <- "progetto_poverta_nigeria\\data\\raw\\sect15a_harvestw4.dta"
+# 3. Scarica il file se non esiste già sul tuo PC
+if (!file.exists(dest_15a)) {
+  message("Scaricamento del dataset in corso...")
+  download.file(url_15a, destfile = dest_15a, mode = "wb")
+}
+# 4. Carica il dataset
+df <- read_dta(dest_15a)
+# Verifica se ha funzionato
+head(df)
 ```
 
+```{r}
+#tentativo di riproducibilità 
+# 1. DEFINIZIONE DELLE CERTELLE E DEI FILE
+#creiamo una nuova cartella DATA se non esiste già
+if (!dir.exists("data/raw")) {
+  dir.create("data/raw", recursive = TRUE)
+}
+#definiamo il nome del file che vogliamo usare
+url_11c2 <- "https://github.com/marina5-web/BancheDati_Nigeria/raw/refs/heads/main/data/raw/secta11c2_harvestw4.dta"
+dest_11c2 <- "progetto_poverta_nigeria\\data\\raw\\secta11c2_harvestw4.dta"
+# 3. Scarica il file se non esiste già sul tuo PC
+if (!file.exists(dest_11c2)) {
+  message("Scaricamento del dataset in corso...")
+  download.file(url_11c2, destfile = dest_11c2, mode = "wb")
+}
+# 4. Carica il dataset
+data_agri2 <- read_dta(dest_11c2)
+# Verifica se ha funzionato
+head(data_agri2)
+```
+
+
+```{r}
+#tentativo di riproducibilità 
+# 1. DEFINIZIONE DELLE CERTELLE E DEI FILE
+#creiamo una nuova cartella DATA se non esiste già
+if (!dir.exists("data/raw")) {
+  dir.create("data/raw", recursive = TRUE)
+}
+#definiamo il nome del file che vogliamo usare
+url_3i <- "https://github.com/marina5-web/BancheDati_Nigeria/raw/refs/heads/main/data/raw/secta3i_harvestw4.dta"
+dest_3i <- "progetto_poverta_nigeria\\data\\raw\\secta3i_harvestw4.dta"
+# 3. Scarica il file se non esiste già sul tuo PC
+if (!file.exists(dest_3i)) {
+  message("Scaricamento del dataset in corso...")
+  download.file(url_3i, destfile = dest_3i, mode = "wb")
+}
+# 4. Carica il dataset
+data_agri <- read_dta(dest_3i)
+# Verifica se ha funzionato
+head(data_agri)
+```
+
+```{r}
+#tentativo di riproducibilità 
+# 1. DEFINIZIONE DELLE CERTELLE E DEI FILE
+#creiamo una nuova cartella DATA se non esiste già
+if (!dir.exists("data/raw")) {
+  dir.create("data/raw", recursive = TRUE)
+}
+#definiamo il nome del file che vogliamo usare
+url_1 <- "https://github.com/marina5-web/BancheDati_Nigeria/raw/refs/heads/main/data/raw/secta1_harvestw4.dta"
+dest_1 <- "progetto_poverta_nigeria\\data\\raw\\secta1_harvestw4.dta"
+# 3. Scarica il file se non esiste già sul tuo PC
+if (!file.exists(dest_1)) {
+  message("Scaricamento del dataset in corso...")
+  download.file(url_1, destfile = dest_1, mode = "wb")
+}
+# 4. Carica il dataset
+data_agri3 <- read_dta(dest_1)
+# Verifica se ha funzionato
+head(data_agri3)
+```
+
+```{r}
+#Rinominiamo i dataset
+#data_agri <- read_dta(here("data", "raw", "secta3i_harvestw4.dta"))
+#data_agri2 <- read_dta(here("data", "raw", "secta11c2_harvestw4.dta"))
+#data_agri3 <- read_dta(here("data", "raw", "secta1_harvestw4.dta"))
+#df <- read_dta(here("data", "raw", "sect15a_harvestw4.dta"))
+```
 
 ```{r}
 #Rinominiamo le variabili di interesse 
@@ -66,9 +123,7 @@ rename(pesticidi= s11c2q1 ,
  data_agri3 <- data_agri3 %>%
   rename(superficie = sa1q11, 
   grandezza_prevista= prefilled_gps_area)
-```
 
-```{r}
 # Pulizia del primo dataset
 data_agri_pulito <- data_agri %>%
   group_by(hhid, plotid) %>% 
@@ -76,9 +131,7 @@ data_agri_pulito <- data_agri %>%
     raccolto_totale = sum(sa3iq6_conv, na.rm = TRUE),
     .groups = 'drop')%>%
   filter(raccolto_totale > 0)
-```
 
-```{r}
 # Pulizia del secondo dataset
 data_agri2_pulito <- data_agri2 %>%
   group_by(hhid, plotid) %>%
@@ -95,9 +148,7 @@ data_agri2_pulito <- data_agri2 %>%
     (attrezzature == 1   | attrezzature == 2),
     (fertilizzanti == 1  | fertilizzanti == 2)
   )
-```
 
-```{r}
 # Pulizia del terzo dataset
 data_agri3_pulito <- data_agri3 %>%
   group_by(hhid, plotid) %>%
@@ -108,9 +159,7 @@ data_agri3_pulito <- data_agri3 %>%
     .groups = 'drop'
   ) %>%
   filter(is.finite(ampiezza), ampiezza > 0)
-```
 
-```{r}
 #pulizia del quarto dataset
 df_clean <- df %>%
   filter(shock_cd %in% c(10, 12, 13, 15)) %>%
@@ -120,10 +169,7 @@ df_clean <- df %>%
     zone %in% c(4, 5, 6) ~ "South",
     TRUE ~ NA_character_
   ))
-```
 
-
-```{r}
 #Creazione e pulizia del dataset finale
 dataset_finale <- data_agri_pulito %>%
   inner_join(data_agri2_pulito, by = c("hhid", "plotid")) %>%
@@ -138,7 +184,10 @@ dataset_finale <- dataset_finale %>%
 filter(resa <= 5000)
 ```
 
+
 ```{r}
+# SEZIONE 3 CREAZIONE DELLE CLASSI
+
 #Dividiamo la variabile ampiezza in quartili per creare classi di ampiezza
 tagli <- quantile(dataset_finale$ampiezza, probs = c(0, 0.25, 0.5, 0.75, 1))
 
@@ -146,9 +195,7 @@ dataset_finale$ampiezza_cat <- cut(dataset_finale$ampiezza,
                                    breaks = tagli, 
                                    labels = c(1, 2, 3, 4), 
                                    include.lowest = TRUE)
-```
 
-```{r}
 #creazione delle classi di resa
 dataset_finale$resa_cat <- cut(dataset_finale$resa, 
                                 breaks = c(0, 50, 250, 1000, 5000), 
@@ -156,6 +203,7 @@ dataset_finale$resa_cat <- cut(dataset_finale$resa,
                                 include.lowest = TRUE)
 ```
 
+SEZIONE 4 CREAZIONE DEI GRAFICI
 ```{r}
 #Grafico della distribuzione delle risposte per la variabile pesticidi
 dataset_finale %>%
@@ -209,6 +257,8 @@ dataset_finale %>%
   theme_minimal()
 ```
 
+SEZIONE 5 ANALISI BIVARIATA
+
 ```{r}
 #analisi bivariata tra resa e pesticidi
 mod1 <- lm(resa ~ factor(pesticidi, levels = c(2, 1), labels = c("No", "Sì")), 
@@ -237,7 +287,7 @@ mod4 <- lm(resa ~ factor(fertilizzanti, levels = c(2, 1), labels = c("No", "Sì"
 summary(mod4)
 ```
 
-
+SEZIONE 6 ANALISI MULTIVARIATA
 ```{r}
 # Modello multiplo
 mod_totale <- lm((resa) ~ 
@@ -251,18 +301,3 @@ data = dataset_finale)
 summary(mod_totale)
 ```
 
-
-# seconda domanda di ricerca
-
-
-```{r}
-table(df_clean$shock_cd, df_clean$macro_zone) |> 
-  prop.table(margin = 2) |> 
-  round(4) * 100
-```
-
-
-```{r}
-# --- PARTE 4: Tabulazione ---
-table(df_finale$classe_resa_dettagliata)
-```
