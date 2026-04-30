@@ -286,16 +286,3 @@ data = dataset_finale)
 summary(mod_totale)
 ```
 
-
-# seconda domanda di ricerca
-
-```{r}
-table(df_clean$shock_cd, df_clean$macro_zone) |> 
-  prop.table(margin = 2) |> 
-  round(4) * 100
-```
-
-```{r}
-# --- PARTE 4: Tabulazione ---
-table(df_finale$classe_resa_dettagliata)
-```
