@@ -1,14 +1,14 @@
-Analisi della povertà stagionale in Nigeria
-
-```{r}
+#
+#
+#
 install.packages("haven", "dplyr", "ggplot2")
 install.packages("here")
 install.packages("httr", "jsonlite")
 install.packages(("forcats"))
 install.packages("tidyr")
-```
-
-```{r}
+#
+#
+#
 library(haven)
 library(dplyr)
 library(ggplot2)
@@ -17,102 +17,87 @@ library(httr)
 library(jsonlite)
 library(forcats)
 library(tidyr)
-```
+#
+#
+#
+#SEZIONE 1 PER RIPRODUCIBILITA'
 
-```{r}
-#tentativo di riproducibilità 
-# 1. DEFINIZIONE DELLE CERTELLE E DEI FILE
-#creiamo una nuova cartella DATA se non esiste già
+# 1. DATASET 15a
+#creiamo una nuova cartella data/raw se non esiste già
 if (!dir.exists("data/raw")) {
   dir.create("data/raw", recursive = TRUE)
 }
 #definiamo il nome del file che vogliamo usare
 url_15a <- "https://github.com/marina5-web/BancheDati_Nigeria/raw/refs/heads/main/data/raw/sect15a_harvestw4.dta"
 dest_15a <- "progetto_poverta_nigeria\\data\\raw\\sect15a_harvestw4.dta"
-# 3. Scarica il file se non esiste già sul tuo PC
+#Scarica il file se non esiste già sul tuo PC
 if (!file.exists(dest_15a)) {
   message("Scaricamento del dataset in corso...")
   download.file(url_15a, destfile = dest_15a, mode = "wb")
 }
-# 4. Carica il dataset
+#Carica il dataset
 df <- read_dta(dest_15a)
 # Verifica se ha funzionato
 head(df)
-```
 
-```{r}
-#tentativo di riproducibilità 
-# 1. DEFINIZIONE DELLE CERTELLE E DEI FILE
-#creiamo una nuova cartella DATA se non esiste già
+# 2. DATASET 11c2
+#creiamo una nuova cartella data/raw se non esiste già
 if (!dir.exists("data/raw")) {
   dir.create("data/raw", recursive = TRUE)
 }
 #definiamo il nome del file che vogliamo usare
 url_11c2 <- "https://github.com/marina5-web/BancheDati_Nigeria/raw/refs/heads/main/data/raw/secta11c2_harvestw4.dta"
 dest_11c2 <- "progetto_poverta_nigeria\\data\\raw\\secta11c2_harvestw4.dta"
-# 3. Scarica il file se non esiste già sul tuo PC
+#Scarica il file se non esiste già sul tuo PC
 if (!file.exists(dest_11c2)) {
   message("Scaricamento del dataset in corso...")
   download.file(url_11c2, destfile = dest_11c2, mode = "wb")
 }
-# 4. Carica il dataset
+#Carica il dataset
 data_agri2 <- read_dta(dest_11c2)
-# Verifica se ha funzionato
+#Verifica se ha funzionato
 head(data_agri2)
-```
 
-
-```{r}
-#tentativo di riproducibilità 
-# 1. DEFINIZIONE DELLE CERTELLE E DEI FILE
-#creiamo una nuova cartella DATA se non esiste già
+#3. DATASET 3i
+#creiamo una nuova cartella data/raw se non esiste già
 if (!dir.exists("data/raw")) {
   dir.create("data/raw", recursive = TRUE)
 }
 #definiamo il nome del file che vogliamo usare
 url_3i <- "https://github.com/marina5-web/BancheDati_Nigeria/raw/refs/heads/main/data/raw/secta3i_harvestw4.dta"
 dest_3i <- "progetto_poverta_nigeria\\data\\raw\\secta3i_harvestw4.dta"
-# 3. Scarica il file se non esiste già sul tuo PC
+#Scarica il file se non esiste già sul tuo PC
 if (!file.exists(dest_3i)) {
   message("Scaricamento del dataset in corso...")
   download.file(url_3i, destfile = dest_3i, mode = "wb")
 }
-# 4. Carica il dataset
+#Carica il dataset
 data_agri <- read_dta(dest_3i)
-# Verifica se ha funzionato
+#Verifica se ha funzionato
 head(data_agri)
-```
 
-```{r}
-#tentativo di riproducibilità 
-# 1. DEFINIZIONE DELLE CERTELLE E DEI FILE
-#creiamo una nuova cartella DATA se non esiste già
+# 4. DATASET 1
+#creiamo una nuova cartella data/raw se non esiste già
 if (!dir.exists("data/raw")) {
   dir.create("data/raw", recursive = TRUE)
 }
 #definiamo il nome del file che vogliamo usare
 url_1 <- "https://github.com/marina5-web/BancheDati_Nigeria/raw/refs/heads/main/data/raw/secta1_harvestw4.dta"
 dest_1 <- "progetto_poverta_nigeria\\data\\raw\\secta1_harvestw4.dta"
-# 3. Scarica il file se non esiste già sul tuo PC
+#Scarica il file se non esiste già sul tuo PC
 if (!file.exists(dest_1)) {
   message("Scaricamento del dataset in corso...")
   download.file(url_1, destfile = dest_1, mode = "wb")
 }
-# 4. Carica il dataset
+#Carica il dataset
 data_agri3 <- read_dta(dest_1)
-# Verifica se ha funzionato
+#Verifica se ha funzionato
 head(data_agri3)
-```
+#
+#
+#
+# SEZIONE 2 PULIZIA E RINOMINAZIONE
 
-```{r}
-#Rinominiamo i dataset
-#data_agri <- read_dta(here("data", "raw", "secta3i_harvestw4.dta"))
-#data_agri2 <- read_dta(here("data", "raw", "secta11c2_harvestw4.dta"))
-#data_agri3 <- read_dta(here("data", "raw", "secta1_harvestw4.dta"))
-#df <- read_dta(here("data", "raw", "sect15a_harvestw4.dta"))
-```
-
-```{r}
 #Rinominiamo le variabili di interesse 
 data_agri2 <- data_agri2 %>%
 rename(pesticidi= s11c2q1 ,
@@ -182,10 +167,10 @@ dataset_finale$resa <- dataset_finale$raccolto_totale / dataset_finale$ampiezza 
 #Filtriamo i dati per eliminare valori di resa non plausibili
 dataset_finale <- dataset_finale %>% 
 filter(resa <= 5000)
-```
-
-
-```{r}
+#
+#
+#
+#
 # SEZIONE 3 CREAZIONE DELLE CLASSI
 
 #Dividiamo la variabile ampiezza in quartili per creare classi di ampiezza
@@ -201,10 +186,10 @@ dataset_finale$resa_cat <- cut(dataset_finale$resa,
                                 breaks = c(0, 50, 250, 1000, 5000), 
                                 labels = c(1, 2, 3, 4), 
                                 include.lowest = TRUE)
-```
-
-SEZIONE 4 CREAZIONE DEI GRAFICI
-```{r}
+#
+#
+#
+#
 #Grafico della distribuzione delle risposte per la variabile pesticidi
 dataset_finale %>%
   ggplot(aes(x = factor(pesticidi, levels = c(1, 2), labels = c("Sì", "No")))) +
@@ -215,10 +200,10 @@ dataset_finale %>%
     y = "Frequenza"
   ) +
   theme_minimal()
-```
-
-
-```{r}
+#
+#
+#
+#
 #Grafico della distribuzione delle risposte per la variabile animali da traino
 dataset_finale %>%
   ggplot(aes(x = factor(animali_traino, levels = c(1, 2), labels = c("Sì", "No")))) +
@@ -229,9 +214,9 @@ dataset_finale %>%
     y = "Frequenza"
   ) +
   theme_minimal()
-```
-
-```{r}
+#
+#
+#
 #Grafico della distribuzione delle risposte per la variabile attrezzature
 dataset_finale %>%
   ggplot(aes(x = factor(attrezzature, levels = c(1, 2), labels = c("Sì", "No")))) +
@@ -242,9 +227,9 @@ dataset_finale %>%
     y = "Frequenza"
   ) +
   theme_minimal()
-```
-
-```{r}
+#
+#
+#
 #grafico della distribuzione delle risposte per la variabile fertilizzanti
 dataset_finale %>%
   ggplot(aes(x = factor(fertilizzanti, levels = c(1, 2), labels = c("Sì", "No")))) +
@@ -255,40 +240,40 @@ dataset_finale %>%
     y = "Frequenza"
   ) +
   theme_minimal()
-```
-
-SEZIONE 5 ANALISI BIVARIATA
-
-```{r}
+#
+#
+#
+#
+#
 #analisi bivariata tra resa e pesticidi
 mod1 <- lm(resa ~ factor(pesticidi, levels = c(2, 1), labels = c("No", "Sì")), 
                   data = dataset_finale)
 summary(mod1)
-```
-
-```{r}
+#
+#
+#
 #analisi bivariata tra resa e animali da traino
 mod2 <- lm(resa ~ factor(animali_traino, levels = c(2, 1), labels = c("No", "Sì")), 
                   data = dataset_finale)
 summary(mod2)
-```
-
-```{r}
+#
+#
+#
 #analisi bivariata tra resa e attrezzature
 mod3 <- lm(resa ~ factor(attrezzature, levels = c(2, 1), labels = c("No", "Sì")), 
                   data = dataset_finale)
 summary(mod3)
-```
-
-```{r}
+#
+#
+#
 #analisi bivariata tra resa e fertilizzanti
 mod4 <- lm(resa ~ factor(fertilizzanti, levels = c(2, 1), labels = c("No", "Sì")), 
                   data = dataset_finale)
 summary(mod4)
-```
-
-SEZIONE 6 ANALISI MULTIVARIATA
-```{r}
+#
+#
+#
+#
 # Modello multiplo
 mod_totale <- lm((resa) ~ 
 factor(pesticidi, levels = c(2, 1), labels = c("No", "Sì")) + 
@@ -299,37 +284,20 @@ factor(ampiezza_cat, levels = c(1, 2, 3, 4), labels = c("Q1", "Q2", "Q3", "Q4"))
 data = dataset_finale)
 
 summary(mod_totale)
-```
-
-Seconda domanda di ricerca
-
-```{r}
-data_agri4 <- read_dta("progetto_poverta_nigeria\\data\\raw\\sect3a_harvestw4.dta")
-data_agri4 <- data_agri4 %>%
-  mutate(
-    s3q8b_label = case_when(
-      s3q8b == 1 ~ "In vacanza",
-      s3q8b == 2 ~ "Malattia",
-      s3q8b == 3 ~ "Business chiuso temporaneamente",
-      s3q8b == 4 ~ "Sciopero, controversie di lavoro",
-      s3q8b == 5 ~ "Lavoro a turni, orario flessibile",
-      s3q8b == 6 ~ "Lavoro stagionale",
-      s3q8b == 8 ~ "Altro",
-      TRUE ~ NA_character_
-    )
-  )
-
-```
-
-```{r}
-# Grafico con etichette leggibili e NA rimossi
-ggplot(data_agri4 %>% filter(!is.na(s3q8b_label)), aes(x = s3q8b_label)) +
-  geom_bar(fill = "#BB2E29", color = "white") +
-  labs(
-    title = "Motivo per cui non ha lavorato negli ultimi 7 giorni",
-    x = "Motivazione",
-    y = "Numero di osservazioni"
-  ) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 25, hjust = 1))
-```
+#
+#
+#
+#
+#
+#
+table(df_clean$shock_cd, df_clean$macro_zone) |> 
+  prop.table(margin = 2) |> 
+  round(4) * 100
+#
+#
+#
+# --- PARTE 4: Tabulazione ---
+table(df_finale$classe_resa_dettagliata)
+#
+#
+#
