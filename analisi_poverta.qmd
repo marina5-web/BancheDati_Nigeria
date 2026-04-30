@@ -6,6 +6,7 @@ Analisi della povertà stagionale in Nigeria
 #install.packages("here")
 #install.packages("httr", "jsonlite")
 #install.packages(("forcats"))
+#install.packages("tidyr")
 ```
 
 ```{r}
@@ -16,6 +17,7 @@ library(here)
 library(httr)
 library(jsonlite)
 library(forcats)
+library(tidyr)
 ```
 
 ```{r}
@@ -121,6 +123,14 @@ dataset_finale$ampiezza_cat <- cut(dataset_finale$ampiezza,
 ```
 
 ```{r}
+#creazione delle classi di resa
+dataset_finale$resa_cat <- cut(dataset_finale$resa, 
+                                breaks = c(0, 50, 250, 1000, 5000), 
+                                labels = c(1, 2, 3, 4), 
+                                include.lowest = TRUE)
+```
+
+```{r}
 #Grafico della distribuzione delle risposte per la variabile pesticidi
 dataset_finale %>%
   ggplot(aes(x = factor(pesticidi, levels = c(1, 2), labels = c("Sì", "No")))) +
@@ -219,64 +229,12 @@ summary(mod_totale)
 # seconda domanda di ricerca
 
 
-
 ```{r}
 table(df_clean$shock_cd, df_clean$macro_zone) |> 
   prop.table(margin = 2) |> 
   round(4) * 100
 ```
 
-```{r}
-library(haven)
-library(dplyr)
-library(tidyr)
-```
-
-```{r}
-# --- PARTE 1: Preparazione del dataset Area ---
-area_completa <- read_dta("progetto_poverta_nigeria\\data\\raw\\secta1_harvestw4.dta") |> 
-  select(hhid, plotid, prefilled_gps_area, sa1q11, zone) |> 
-  # Creazione area_ibrida (se sa1q11 è missing, usa gps_area)
-  mutate(area_ibrida = coalesce(sa1q11, prefilled_gps_area)) |> 
-  # drop if missing(area_ibrida)
-  filter(!is.na(area_ibrida)) |> 
-  # duplicates drop hhid plotid, force
-  distinct(hhid, plotid, .keep_all = TRUE)
-```
-
-```{r}
-
-# --- PARTE 2: Caricamento secondo dataset e Merge ---
-df_resa <- read_dta("progetto_poverta_nigeria\\data\\raw\\secta3i_harvestw4.dta") |> 
-  # merge m:1 hhid plotid using area_completa
-  # In R, left_join mantiene tutti i record del dataset di sinistra (master)
-  left_join(area_completa, by = c("hhid", "plotid"))
-```
-
-```{r}
-# --- PARTE 3: Calcoli e Ricodifica ---
-df_finale <- df_resa |> 
-  # Calcolo resa
-  mutate(resa_ibrida = (sa3iq6_conv / area_ibrida) * 10000) |> 
-  # Recode (classe_resa_dettagliata)
-  mutate(classe_resa_dettagliata = case_when(
-    resa_ibrida > 0      & resa_ibrida <= 50   ~ 1,
-    resa_ibrida > 50     & resa_ibrida <= 250  ~ 2,
-    resa_ibrida > 250    & resa_ibrida <= 1000 ~ 3,
-    resa_ibrida > 1000   & resa_ibrida <= 5000 ~ 4,
-    TRUE ~ NA_real_
-  )) |> 
-  # Filtri (drop if < 1 o > 5000)
-  filter(!is.na(classe_resa_dettagliata)) |> 
-  # Etichette per la tabella
-  mutate(classe_resa_dettagliata = factor(classe_resa_dettagliata,
-    levels = c(1, 2, 3, 4),
-    labels = c("Marginale (<50 kg/ha)", 
-               "Sussistenza Fragile (50-250 kg/ha)", 
-               "Sussistenza Stabile (250-1k kg/ha)", 
-               "Potenziale Mercato (1k-5k kg/ha)")
-  ))
-```
 
 ```{r}
 # --- PARTE 4: Tabulazione ---
