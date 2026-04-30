@@ -24,7 +24,8 @@ links <- c(
   "secta1"    = "https://github.com/marina5-web/BancheDati_Nigeria/releases/download/v1.0/secta1_harvestw4.dta",
   "secta3i"   = "https://github.com/marina5-web/BancheDati_Nigeria/releases/download/v1.0/secta3i_harvestw4.dta",
   "secta11c2" = "https://github.com/marina5-web/BancheDati_Nigeria/releases/download/v1.0/secta11c2_harvestw4.dta",
-  "sect15a"  = "https://github.com/marina5-web/BancheDati_Nigeria/releases/download/v1.0/sect15a_harvestw4.dta"
+  "sect15a"  = "https://github.com/marina5-web/BancheDati_Nigeria/releases/download/v1.0/sect15a_harvestw4.dta",
+  "sect3a"= "https://github.com/marina5-web/BancheDati_Nigeria/releases/download/v1.0/sect3a_harvestw4.dta"
 )
 
 if(!dir.exists(here("data/raw"))) {
@@ -49,6 +50,7 @@ data_agri  <- data_list[[2]]
 data_agri2 <- data_list[[3]]
 data_agri3 <- data_list[[1]]
 df         <- data_list[[4]]
+data_agri4 <- data_list[[5]]
 ```
 
 ```{r}
@@ -243,7 +245,6 @@ summary(mod_totale)
 Seconda domanda di ricerca
 
 ```{r}
-data_agri4 <- read_dta("progetto_poverta_nigeria\\data\\raw\\sect3a_harvestw4.dta")
 data_agri4 <- data_agri4 %>%
   mutate(
     s3q8b_label = case_when(
