@@ -1,6 +1,5 @@
 Analisi della povertà stagionale in Nigeria
 
-
 ```{r}
 #install.packages("haven", "dplyr", "ggplot2")
 #install.packages("here")
@@ -19,12 +18,96 @@ library(forcats)
 ```
 
 ```{r}
-#Rinominiamo i dataset
-data_agri <- read_dta(here("data", "raw", "secta3i_harvestw4.dta"))
-data_agri2 <- read_dta(here("data", "raw", "secta11c2_harvestw4.dta"))
-data_agri3 <- read_dta(here("data", "raw", "secta1_harvestw4.dta"))
-df <- read_dta(here("data", "raw", "sect15a_harvestw4.dta"))
+#tentativo di riproducibilità 
+# 1. DEFINIZIONE DELLE CERTELLE E DEI FILE
+#creiamo una nuova cartella DATA se non esiste già
+if (!dir.exists("data/raw")) {
+  dir.create("data/raw", recursive = TRUE)
+}
+#definiamo il nome del file che vogliamo usare
+url_15a <- "https://github.com/marina5-web/BancheDati_Nigeria/raw/refs/heads/main/data/raw/sect15a_harvestw4.dta"
+dest_15a <- "progetto_poverta_nigeria\\data\\raw\\sect15a_harvestw4.dta"
+# 3. Scarica il file se non esiste già sul tuo PC
+if (!file.exists(dest_15a)) {
+  message("Scaricamento del dataset in corso...")
+  download.file(url_15a, destfile = dest_15a, mode = "wb")
+}
+# 4. Carica il dataset
+df <- read_dta(dest_15a)
+# Verifica se ha funzionato
+head(df)
+```
 
+```{r}
+#tentativo di riproducibilità 
+# 1. DEFINIZIONE DELLE CERTELLE E DEI FILE
+#creiamo una nuova cartella DATA se non esiste già
+if (!dir.exists("data/raw")) {
+  dir.create("data/raw", recursive = TRUE)
+}
+#definiamo il nome del file che vogliamo usare
+url_11c2 <- "https://github.com/marina5-web/BancheDati_Nigeria/raw/refs/heads/main/data/raw/secta11c2_harvestw4.dta"
+dest_11c2 <- "progetto_poverta_nigeria\\data\\raw\\secta11c2_harvestw4.dta"
+# 3. Scarica il file se non esiste già sul tuo PC
+if (!file.exists(dest_11c2)) {
+  message("Scaricamento del dataset in corso...")
+  download.file(url_11c2, destfile = dest_11c2, mode = "wb")
+}
+# 4. Carica il dataset
+data_agri2 <- read_dta(dest_11c2)
+# Verifica se ha funzionato
+head(data_agri2)
+```
+
+
+```{r}
+#tentativo di riproducibilità 
+# 1. DEFINIZIONE DELLE CERTELLE E DEI FILE
+#creiamo una nuova cartella DATA se non esiste già
+if (!dir.exists("data/raw")) {
+  dir.create("data/raw", recursive = TRUE)
+}
+#definiamo il nome del file che vogliamo usare
+url_3i <- "https://github.com/marina5-web/BancheDati_Nigeria/raw/refs/heads/main/data/raw/secta3i_harvestw4.dta"
+dest_3i <- "progetto_poverta_nigeria\\data\\raw\\secta3i_harvestw4.dta"
+# 3. Scarica il file se non esiste già sul tuo PC
+if (!file.exists(dest_3i)) {
+  message("Scaricamento del dataset in corso...")
+  download.file(url_3i, destfile = dest_3i, mode = "wb")
+}
+# 4. Carica il dataset
+data_agri <- read_dta(dest_3i)
+# Verifica se ha funzionato
+head(data_agri)
+```
+
+```{r}
+#tentativo di riproducibilità 
+# 1. DEFINIZIONE DELLE CERTELLE E DEI FILE
+#creiamo una nuova cartella DATA se non esiste già
+if (!dir.exists("data/raw")) {
+  dir.create("data/raw", recursive = TRUE)
+}
+#definiamo il nome del file che vogliamo usare
+url_1 <- "https://github.com/marina5-web/BancheDati_Nigeria/raw/refs/heads/main/data/raw/secta1_harvestw4.dta"
+dest_1 <- "progetto_poverta_nigeria\\data\\raw\\secta1_harvestw4.dta"
+# 3. Scarica il file se non esiste già sul tuo PC
+if (!file.exists(dest_1)) {
+  message("Scaricamento del dataset in corso...")
+  download.file(url_1, destfile = dest_1, mode = "wb")
+}
+# 4. Carica il dataset
+data_agri3 <- read_dta(dest_1)
+# Verifica se ha funzionato
+head(data_agri3)
+```
+
+```{r}
+#Rinominiamo i dataset
+#data_agri <- read_dta(here("data", "raw", "secta3i_harvestw4.dta"))
+#data_agri2 <- read_dta(here("data", "raw", "secta11c2_harvestw4.dta"))
+#data_agri3 <- read_dta(here("data", "raw", "secta1_harvestw4.dta"))
+#df <- read_dta(here("data", "raw", "sect15a_harvestw4.dta"))
 ```
 
 ```{r}
