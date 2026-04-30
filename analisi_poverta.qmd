@@ -31,7 +31,8 @@ links <- c(
   "secta1"    = "https://github.com/marina5-web/BancheDati_Nigeria/releases/download/v1.0/secta1_harvestw4.dta",
   "secta3i"   = "https://github.com/marina5-web/BancheDati_Nigeria/releases/download/v1.0/secta3i_harvestw4.dta",
   "secta11c2" = "https://github.com/marina5-web/BancheDati_Nigeria/releases/download/v1.0/secta11c2_harvestw4.dta",
-  "sect15a"  = "https://github.com/marina5-web/BancheDati_Nigeria/releases/download/v1.0/sect15a_harvestw4.dta"
+  "sect15a"  = "https://github.com/marina5-web/BancheDati_Nigeria/releases/download/v1.0/sect15a_harvestw4.dta",
+  "sect3a"= "https://github.com/marina5-web/BancheDati_Nigeria/releases/download/v1.0/sect3a_harvestw4.dta"
 )
 
 if(!dir.exists(here("data/raw"))) {
@@ -56,6 +57,7 @@ data_agri  <- data_list[[2]]
 data_agri2 <- data_list[[3]]
 data_agri3 <- data_list[[1]]
 df         <- data_list[[4]]
+data_agri4 <- data_list[[5]]
 ```
 
 ```{r}
@@ -281,3 +283,34 @@ data = dataset_finale)
 summary(mod_totale)
 ```
 
+Seconda domanda di ricerca
+
+```{r}
+data_agri4 <- data_agri4 %>%
+  mutate(
+    s3q8b_label = case_when(
+      s3q8b == 1 ~ "In vacanza",
+      s3q8b == 2 ~ "Malattia",
+      s3q8b == 3 ~ "Business chiuso temporaneamente",
+      s3q8b == 4 ~ "Sciopero, controversie di lavoro",
+      s3q8b == 5 ~ "Lavoro a turni, orario flessibile",
+      s3q8b == 6 ~ "Lavoro stagionale",
+      s3q8b == 8 ~ "Altro",
+      TRUE ~ NA_character_
+    )
+  )
+
+```
+
+```{r}
+# Grafico con etichette leggibili e NA rimossi
+ggplot(data_agri4 %>% filter(!is.na(s3q8b_label)), aes(x = s3q8b_label)) +
+  geom_bar(fill = "#BB2E29", color = "white") +
+  labs(
+    title = "Motivo per cui non ha lavorato negli ultimi 7 giorni",
+    x = "Motivazione",
+    y = "Numero di osservazioni"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 25, hjust = 1))
+```
