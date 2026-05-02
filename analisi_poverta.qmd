@@ -6,6 +6,8 @@ install.packages("here")
 install.packages("httr", "jsonlite")
 install.packages(("forcats"))
 install.packages("tidyr")
+install.packages("sjPlot")
+install.packages("ggeffects")
 ```
 
 ```{r}
@@ -17,6 +19,9 @@ library(httr)
 library(jsonlite)
 library(forcats)
 library(tidyr)
+library(tidyverse)
+library(scales)
+library(sjPlot)
 ```
 
 ```{r}
@@ -24,6 +29,7 @@ library(tidyr)
 #data_agri2 <- read_dta("progetto_poverta_nigeria\\data\\raw\\secta11c2.dta")
 #data_agri3 <- read_dta("progetto_poverta_nigeria\\data\\raw\\secta1.dta")
 #df <- read_dta("progetto_poverta_nigeria\\data\\raw\\sect15a.dta")
+#data_agri4 <- read_dta("progetto_poverta_nigeria\\data\\raw\\sect3a.dta")
 ```
 
 ```{r}
@@ -56,7 +62,7 @@ data_list <- lapply(names(links), function(x) {
 data_agri  <- data_list[[2]]
 data_agri2 <- data_list[[3]]
 data_agri3 <- data_list[[1]]
-df         <- data_list[[4]]
+data_agri5        <- data_list[[4]]
 data_agri4 <- data_list[[5]]
 ```
 
@@ -68,8 +74,9 @@ rename(pesticidi= s11c2q1 ,
  attrezzature= s11c2q27, 
  fertilizzanti= s11dq1a
  )
- data_agri3 <- data_agri3 %>%
-  rename(superficie = sa1q11, 
+
+data_agri3 <- data_agri3 %>%
+  rename(superficie = sa1q11,
   grandezza_prevista= prefilled_gps_area)
 
 # Pulizia del primo dataset
@@ -108,15 +115,47 @@ data_agri3_pulito <- data_agri3 %>%
   ) %>%
   filter(is.finite(ampiezza), ampiezza > 0)
 
-#pulizia del quarto dataset
-df_clean <- df %>%
-  filter(shock_cd %in% c(10, 12, 13, 15)) %>%
+data_agri4_pulito <- data_agri4 %>%
+  mutate(
+    presenza_lavoro = case_when(
+      s3q5 == 1 ~ "Presente",
+      s3q5 == 2 ~ "Assente",
+      TRUE ~ NA_character_
+    ),
+    # Creiamo motivo_assenza già raggruppato per evitare barre vuote/piccole
+    motivo_assenza = case_when(
+      s3q8b %in% c(1, 3, 5, 8) ~ "Altro (Vacanza/Turni/Chiuso)",
+      s3q8b == 2 ~ "Malattia",
+      s3q8b == 6 ~ "Lavoro stagionale",
+      s3q8b == 4 ~ "Scioperi/Controversie", 
+      TRUE ~ "Nessuna assenza"
+    )
+  ) %>%
+  group_by(hhid) %>%
+  summarise(
+    presenza_lavoro = first(presenza_lavoro),
+    motivo_assenza = first(motivo_assenza),
+    .groups = 'drop'
+  )
+
+shock_univoci <- data_agri5 %>%
   filter(s15aq1 == 1) %>%
-  mutate(macro_zone = case_when(
-    zone %in% c(1, 2, 3) ~ "North",
-    zone %in% c(4, 5, 6) ~ "South",
-    TRUE ~ NA_character_
-  ))
+  mutate(shock_agricolo = case_when(
+    shock_cd == 10 ~ "Incendio",
+    shock_cd == 12 ~ "Piogge povere",
+    shock_cd == 13 ~ "Alluvione",
+    shock_cd == 14 ~ "Invasione di parassiti",
+    shock_cd %in% c(18, 19, 20) ~ "Economico",
+    shock_cd %in% c(1, 3) ~ "Salute",
+    TRUE ~ NA_character_ 
+  )) %>%
+  filter(!is.na(shock_agricolo)) %>%
+  group_by(hhid) %>%
+  summarise(
+    shock_agricolo = first(shock_agricolo),
+    zone = first(zone),
+    .groups = 'drop'
+  )
 
 #Creazione e pulizia del dataset finale
 dataset_finale <- data_agri_pulito %>%
@@ -130,6 +169,30 @@ dataset_finale$resa <- dataset_finale$raccolto_totale / dataset_finale$ampiezza 
 #Filtriamo i dati per eliminare valori di resa non plausibili
 dataset_finale <- dataset_finale %>% 
 filter(resa <= 5000)
+
+#dataset per seconda domanda di ricerca
+dataset_per_grafico <- data_agri_pulito %>%
+  inner_join(data_agri3_pulito, by = c("hhid", "plotid")) %>%
+  left_join(shock_univoci, by = "hhid") %>%
+  left_join(data_agri4_pulito, by = "hhid") %>%
+  mutate(resa = (raccolto_totale / ampiezza) * 10000) %>%
+  filter(resa <= 5000) %>%
+  mutate(
+    # Creazione classi di resa
+    resa_cat = factor(cut(resa, 
+                          breaks = c(0, 50, 250, 1000, 5000), 
+                          labels = c("Molto Bassa", "Bassa", "Media", "Alta"), 
+                          include.lowest = TRUE)),
+    # Definizione macro-zone
+    macro_zone = factor(case_when(
+      zone %in% c(1, 2, 3) ~ "Nord",
+      zone %in% c(4, 5, 6) ~ "Sud"
+    )),
+    shock_agricolo = factor(ifelse(is.na(shock_agricolo), "Nessuno Shock", shock_agricolo)),
+    presenza_lavoro = factor(presenza_lavoro)
+  ) %>%
+  filter(!is.na(macro_zone)) # Eliminiamo righe senza zona
+
 ```
 
 
@@ -149,26 +212,6 @@ dataset_finale$resa_cat <- cut(dataset_finale$resa,
                                 breaks = c(0, 50, 250, 1000, 5000), 
                                 labels = c(1, 2, 3, 4), 
                                 include.lowest = TRUE)
-
-
-# Divisioni in classi della variabile s3q8b
-data_agri4 <- data_agri4 %>%
-  mutate(
-    s3q8b_label = case_when(
-      s3q8b == 1 ~ "In vacanza",
-      s3q8b == 2 ~ "Malattia",
-      s3q8b == 3 ~ "Business chiuso temporaneamente",
-      s3q8b == 4 ~ "Sciopero, controversie di lavoro",
-      s3q8b == 5 ~ "Lavoro a turni, orario flessibile",
-      s3q8b == 6 ~ "Lavoro stagionale",
-      s3q8b == 8 ~ "Altro",
-      TRUE ~ NA_character_
-    )
-  )
-
-```
-
-```{r}
 
 ```
 
@@ -227,16 +270,52 @@ dataset_finale %>%
 ```
 
 ```{r}
-# Grafico con etichette leggibili e NA rimossi
-ggplot(data_agri4 %>% filter(!is.na(s3q8b_label)), aes(x = s3q8b_label)) +
-  geom_bar(fill = "#BB2E29", color = "white") +
-  labs(
-    title = "Motivo per cui non ha lavorato negli ultimi 7 giorni",
-    x = "Motivazione",
-    y = "Numero di osservazioni"
-  ) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 25, hjust = 1))
+#Grafico per variabile dipendente divisa in zone
+ggplot(dataset_per_grafico, aes(x = resa_cat, fill = macro_zone)) +
+  geom_bar(aes(y = (..count..)/sum(..count..)), show.legend = FALSE) + 
+  facet_wrap(~macro_zone) +
+  scale_y_continuous(labels = percent) +
+  labs(title = "Distribuzione Classi di Resa", x = "Classe di Resa", y = "Percentuale") +
+  theme_minimal()
+```
+
+```{r}
+#Grafico per variabile presenza_lavoro divisa in zone
+ggplot(dataset_per_grafico %>% filter(!is.na(presenza_lavoro)), 
+       aes(x = presenza_lavoro, fill = macro_zone)) +
+  geom_bar(aes(y = (..count..)/tapply(..count.., ..PANEL.., sum)[..PANEL..]), show.legend = FALSE) +
+  facet_wrap(~macro_zone) +
+  scale_y_continuous(labels = percent) +
+  labs(title = "Presenza al lavoro agricolo negli ultimi 7 giorni", x = "Presenza a lavoro", y = "Percentuale") +
+  theme_minimal()
+```
+
+```{r}
+#Grafico per variabile motivo_assenza divisa in zone
+ggplot(dataset_per_grafico %>% filter(motivo_assenza != "Nessuna assenza"), 
+       aes(x = motivo_assenza, fill = macro_zone)) +
+  # Usiamo tapply per ricalcolare le percentuali SOLO sui presenti nel grafico
+  geom_bar(aes(y = (..count..)/tapply(..count.., ..PANEL.., sum)[..PANEL..]), 
+           show.legend = FALSE) +
+  facet_wrap(~macro_zone) +
+  scale_y_continuous(labels = percent) +
+  coord_flip() + 
+  labs(title = "Distribuzione Motivi di Assenza", 
+       x = "Motivo di assenza", 
+       y = "Percentuale sul totale delle assenze") +
+  theme_minimal()
+```
+
+```{r}
+#Grafico per variabile shock_agricolo divisa in zone
+ggplot(dataset_per_grafico %>% filter(shock_agricolo != "Nessuno Shock"), 
+       aes(x = shock_agricolo, fill = macro_zone)) +
+  geom_bar(aes(y = (..count..)/tapply(..count.., ..PANEL.., sum)[..PANEL..]), show.legend = FALSE) +
+  facet_wrap(~macro_zone) +
+  scale_y_continuous(labels = percent) +
+  coord_flip() +
+  labs(title = "Tipologia di Shock Subiti", x = "Tipo di Shock", y = "Percentuale") +
+  theme_minimal()
 ```
 
 SEZIONE 5 ANALISI BIVARIATA
@@ -269,6 +348,127 @@ mod4 <- lm(resa ~ factor(fertilizzanti, levels = c(2, 1), labels = c("No", "Sì"
 summary(mod4)
 ```
 
+```{r}
+data_nord <- dataset_per_grafico %>% filter(macro_zone == "Nord")
+data_sud  <- dataset_per_grafico %>% filter(macro_zone == "Sud")
+```
+
+```{r}
+#Test tra shock e resa
+test_pulito <- function(data) {
+  # Droppa i livelli non utilizzati (come 'Nessuno Shock' che ha 0 casi)
+  tabella <- table(droplevels(data$shock_agricolo), data$resa_cat)
+  return(chisq.test(tabella))
+}
+chisq_shock_nord_v2 <- test_pulito(data_nord)
+chisq_shock_sud_v2  <- test_pulito(data_sud)
+```
+
+```{r}
+#Test tra presenza a lavoro e resa
+chisq_lavoro_nord <- chisq.test(table(data_nord$presenza_lavoro, data_nord$resa_cat))
+chisq_lavoro_sud  <- chisq.test(table(data_sud$presenza_lavoro, data_sud$resa_cat))
+```
+
+```{r}
+#Test tra motivo assenza e resa
+chisq_motivo_nord <- chisq.test(table(data_nord$motivo_assenza, data_nord$resa_cat))
+chisq_motivo_sud  <- chisq.test(table(data_sud$motivo_assenza, data_sud$resa_cat))
+```
+
+```{r}
+# Creiamo la tabella includendo i valori della statistica Chi-quadrato (X-squared)
+results_completi <- data.frame(
+  Relazione = c("Shock-Resa", "Lavoro-Resa", "Motivo-Resa"),
+  
+  Chi2_Nord = c(chisq_shock_nord_v2$statistic, 
+                chisq_lavoro_nord$statistic, 
+                chisq_motivo_nord$statistic),
+  
+  P_Value_Nord = c(chisq_shock_nord_v2$p.value, 
+                   chisq_lavoro_nord$p.value, 
+                   chisq_motivo_nord$p.value),
+  
+  Chi2_Sud = c(chisq_shock_sud_v2$statistic, 
+               chisq_lavoro_sud$statistic, 
+               chisq_motivo_sud$statistic),
+  
+  P_Value_Sud = c(chisq_shock_sud_v2$p.value, 
+                  chisq_lavoro_sud$p.value, 
+                  chisq_motivo_sud$p.value)
+)
+results_completi[, -1] <- round(results_completi[, -1], 5)
+print(results_completi)
+
+```
+
+```{r}
+#per essere sicuri che li inserisca in ordine 
+dataset_per_grafico$resa_cat <- factor(dataset_per_grafico$resa_cat, 
+                                       levels = c("Molto Bassa", "Bassa", "Media", "Alta"))
+```
+
+```{r}
+#Grafico analisi bivariata tra resa e shock_agricolo per zone
+ggplot(dataset_per_grafico %>% filter(shock_agricolo != "Nessuno Shock"), 
+       aes(x = shock_agricolo, fill = resa_cat)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~macro_zone) +
+  scale_y_continuous(labels = percent) +
+  # Scala colori coerente: dal rosso (peggiore) al verde (migliore)
+  scale_fill_manual(values = c("Molto Bassa" = "#d7191c", 
+                               "Bassa" = "#fdae61", 
+                               "Media" = "#a6d96a", 
+                               "Alta" = "#1a9641"), 
+                    name = "Resa Agricola") +
+  coord_flip() +
+  labs(title = "Impatto degli Shock sulla Resa Agricola",
+       subtitle = "Confronto Nord vs Sud",
+       x = "Tipo di Shock",
+       y = "Proporzione (100%)") +
+  theme_minimal()
+```
+
+```{r}
+#Grafico analisi bivariata tra resa e presenza_lavoro per zone
+ggplot(dataset_per_grafico %>% filter(!is.na(presenza_lavoro)), 
+       aes(x = presenza_lavoro, fill = resa_cat)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~macro_zone) +
+  scale_y_continuous(labels = percent) +
+  # Stessa scala colori manuale
+  scale_fill_manual(values = c("Molto Bassa" = "#d7191c", 
+                               "Bassa" = "#fdae61", 
+                               "Media" = "#a6d96a", 
+                               "Alta" = "#1a9641"), 
+                    name = "Resa Agricola") +
+  labs(title = "Relazione tra Presenza a lavoro e Resa Agricola",
+       subtitle = "Confronto Nord vs Sud",
+       x = "Presenza a Lavoro",
+       y = "Proporzione (100%)") +
+  theme_minimal()
+```
+
+```{r}
+#Grafico analisi bivariata tra resa e motivo_assenza per zone
+ggplot(dataset_per_grafico %>% filter(motivo_assenza != "Nessuna assenza"), 
+       aes(x = motivo_assenza, fill = resa_cat)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~macro_zone) +
+  scale_y_continuous(labels = percent) +
+  # Usiamo una scala che va dal rosso (povero) al verde (ricco)
+  scale_fill_manual(values = c("Molto Bassa" = "#d7191c", 
+                               "Bassa" = "#fdae61", 
+                               "Media" = "#a6d96a", 
+                               "Alta" = "#1a9641"), 
+                    name = "Resa Agricola") +
+  coord_flip() +
+  labs(title = "Impatto del Motivo di Assenza sulla Resa",
+       x = "Motivo dell'Assenza",
+       y = "Proporzione (100%)") +
+  theme_minimal()
+```
+
 SEZIONE 6 ANALISI MULTIVARIATA
 ```{r}
 # Modello multiplo
@@ -283,34 +483,41 @@ data = dataset_finale)
 summary(mod_totale)
 ```
 
-Seconda domanda di ricerca
-
 ```{r}
-data_agri4 <- data_agri4 %>%
-  mutate(
-    s3q8b_label = case_when(
-      s3q8b == 1 ~ "In vacanza",
-      s3q8b == 2 ~ "Malattia",
-      s3q8b == 3 ~ "Business chiuso temporaneamente",
-      s3q8b == 4 ~ "Sciopero, controversie di lavoro",
-      s3q8b == 5 ~ "Lavoro a turni, orario flessibile",
-      s3q8b == 6 ~ "Lavoro stagionale",
-      s3q8b == 8 ~ "Altro",
-      TRUE ~ NA_character_
-    )
-  )
+# Modello Multivariato Base
+modello_resa <- lm(resa ~ macro_zone + shock_agricolo + presenza_lavoro, 
+                   data = dataset_per_grafico)
 
+# Visualizzazione risultati
+summary(modello_resa)
 ```
 
 ```{r}
-# Grafico con etichette leggibili e NA rimossi
-ggplot(data_agri4 %>% filter(!is.na(s3q8b_label)), aes(x = s3q8b_label)) +
-  geom_bar(fill = "#BB2E29", color = "white") +
-  labs(
-    title = "Motivo per cui non ha lavorato negli ultimi 7 giorni",
-    x = "Motivazione",
-    y = "Numero di osservazioni"
-  ) +
+# Modello con interazione tra zona e shock
+modello_interazione <- lm(resa ~ macro_zone * shock_agricolo + presenza_lavoro, 
+                          data = dataset_per_grafico)
+
+summary(modello_interazione)
+```
+
+```{r}
+# Modello con Log-Resa (interpretere i coefficienti come variazioni percentuali)
+modello_log <- lm(log(resa + 1) ~ macro_zone * shock_agricolo + presenza_lavoro, 
+                  data = dataset_per_grafico)
+
+summary(modello_log)
+```
+
+```{r}
+# Grafico dei coefficienti (Forest Plot)
+plot_model(modello_log, show.values = TRUE, vline.color = "red") +
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 25, hjust = 1))
+  labs(title = "Determinanti della Resa Agricola in Nigeria")
+```
+
+```{r}
+# Grafico delle medie predette
+plot_model(modello_log, type = "pred", terms = c("shock_agricolo", "macro_zone")) +
+  theme_minimal() +
+  labs(title = "Effetto degli Shock sulla Resa: Nord vs Sud")
 ```
