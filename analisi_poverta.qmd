@@ -398,7 +398,7 @@ modelsummary(
 
 ```{r}
 #modello logaritmico
-mod_log <- lm(
+mod_log_rq1 <- lm(
   log(resa + 1) ~
     factor(pesticidi,      levels = c(2, 1), labels = c("No", "Sì")) +
     factor(animali_traino, levels = c(2, 1), labels = c("No", "Sì")) +
@@ -413,7 +413,7 @@ mod_log <- lm(
 #tabella comparativa modelli OLS vs logaritmico
 modelli_comparativi <- list(
   "OLS" = mod_totale,
-  "Log-OLS" = mod_log
+  "Log-OLS" = mod_log_rq1
 )
 modelsummary(
   modelli_comparativi,
@@ -662,7 +662,7 @@ summary(mod_interazione)
 ```
 
 ```{r}
-mod_log <- lm(
+mod_log_rq2 <- lm(
   log(resa + 1) ~ macro_zone * shock_agricolo + presenza_lavoro,
   data = dataset_rq2
 )
@@ -670,13 +670,13 @@ summary(mod_log)
 ```
 
 ```{r}
-plot_model(mod_log, show.values = TRUE, vline.color = "red") +
+plot_model(mod_log_rq2, show.values = TRUE, vline.color = "red") +
   theme_minimal() +
   labs(title = "Determinanti della Resa Agricola in Nigeria")
 ```
 
 ```{r}
-plot_model(mod_log, type = "pred", terms = c("shock_agricolo", "macro_zone")) +
+plot_model(mod_log_rq2, type = "pred", terms = c("shock_agricolo", "macro_zone")) +
   theme_minimal() +
   labs(title = "Effetto degli Shock sulla Resa: Nord vs Sud")
 ```
