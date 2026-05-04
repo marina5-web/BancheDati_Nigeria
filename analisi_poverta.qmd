@@ -179,9 +179,6 @@ shock_pulito <- data_shock %>%
   )
 ```
 
----
-
-
 ```{r}
 dataset_rq1 <- raccolto_pulito %>%
   inner_join(inputs_pulito,    by = c("hhid", "plotid")) %>%
@@ -193,6 +190,7 @@ dataset_rq1 <- raccolto_pulito %>%
 ```{r}
 dataset_rq2 <- raccolto_pulito %>%
   inner_join(superfici_pulito, by = c("hhid", "plotid")) %>%
+  inner_join(inputs_pulito, by = c("hhid", "plotid")) %>%
   left_join(shock_pulito,  by = "hhid") %>%
   left_join(lavoro_pulito, by = "hhid") %>%
   mutate(
@@ -652,17 +650,27 @@ ggplot(dataset_rq2 %>% filter(!is.na(motivo_assenza)),
 ### 7.3 Analisi multivariata
 
 ```{r}
-dataset_rq2$presenza_lavoro = as.factor(ifelse(is.na(dataset_rq2$presenza_lavoro), 1, 0))
+#dataset_rq2$presenza_lavoro = as.factor(ifelse(is.na(dataset_rq2$presenza_lavoro), 1, 0))
 mod_base <- lm(
-  resa ~ macro_zone + shock_agricolo + presenza_lavoro,
+  resa ~ factor(zone) + shock_agricolo + presenza_lavoro 
+       #+ factor(pesticidi,      levels = c(2,1), labels = c("No","Sì"))
+       #+ factor(animali_traino, levels = c(2,1), labels = c("No","Sì"))
+       + factor(attrezzature,   levels = c(2,1), labels = c("No","Sì"))
+       + factor(fertilizzanti,  levels = c(2,1), labels = c("No","Sì")),
   data = dataset_rq2
 )
 summary(mod_base)
 ```
 
 ```{r}
+dataset_rq2 <- dataset_rq2 %>%
+  mutate(zone = factor(zone))
 mod_interazione <- lm(
-  resa ~ macro_zone * shock_agricolo + presenza_lavoro,
+  resa ~ zone * shock_agricolo + presenza_lavoro 
+  + zone * factor(pesticidi, levels = c(2,1), labels = c("No", "Sì"))
+  + zone * factor(animali_traino, levels = c(2,1), labels = c("No", "Sì"))
+  + zone * factor(attrezzature, levels = c(2,1), labels = c("No", "Sì"))
+  + zone * factor(fertilizzanti, levels = c(2,1), labels = c("No", "Sì")),
   data = dataset_rq2
 )
 summary(mod_interazione)
@@ -670,10 +678,14 @@ summary(mod_interazione)
 
 ```{r}
 mod_log_rq2 <- lm(
-  log(resa + 1) ~ macro_zone * shock_agricolo + presenza_lavoro,
+  log(resa + 1) ~ macro_zone * shock_agricolo + presenza_lavoro 
+  + macro_zone * factor(pesticidi, levels = c(2,1), labels = c("No", "Sì"))
+  + macro_zone * factor(animali_traino, levels = c(2,1), labels = c("No", "Sì"))
+  + macro_zone * factor(attrezzature, levels = c(2,1), labels = c("No", "Sì"))
+  + macro_zone * factor(fertilizzanti, levels = c(2,1), labels = c("No", "Sì")),
   data = dataset_rq2
 )
-summary(mod_log)
+summary(mod_log_rq2)
 ```
 
 ```{r}
@@ -683,7 +695,30 @@ plot_model(mod_log_rq2, show.values = TRUE, vline.color = "red") +
 ```
 
 ```{r}
-plot_model(mod_log_rq2, type = "pred", terms = c("shock_agricolo", "macro_zone")) +
-  theme_minimal() +
-  labs(title = "Effetto degli Shock sulla Resa: Nord vs Sud")
+library(ggeffects)
+# Crea griglia di predizione
+newdata <- expand.grid(
+  shock_agricolo  = unique(dataset_rq2$shock_agricolo),
+  macro_zone      = c("Nord", "Sud"),
+  pesticidi       = 2,
+  animali_traino  = 2,
+  attrezzature    = 2,
+  fertilizzanti   = 2,
+  presenza_lavoro = "Presente"
+)
+
+newdata$pred <- exp(predict(mod_log_rq2, newdata = newdata)) - 1
+
+# Grafico
+ggplot(newdata, aes(x = shock_agricolo, y = pred, color = macro_zone, group = macro_zone)) +
+  geom_point(size = 3) +
+  geom_line() +
+  coord_flip() +
+  labs(
+    title  = "Effetto degli Shock sulla Resa: Nord vs Sud",
+    x      = "Tipo di Shock",
+    y      = "Resa Predetta (kg/ha)",
+    color  = "Zona"
+  ) +
+  theme_minimal()
 ```
