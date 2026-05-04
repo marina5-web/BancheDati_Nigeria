@@ -456,12 +456,13 @@ ggplot(dataset_rq2, aes(x = resa_cat, fill = macro_zone)) +
 ```
 
 ```{r}
-ggplot(dataset_rq2 %>% filter(!is.na(presenza_lavoro)),
-       aes(x = presenza_lavoro, fill = macro_zone)) +
-  geom_bar(
-    aes(y = (..count..)/tapply(..count.., ..PANEL.., sum)[..PANEL..]),
-    show.legend = FALSE
-  ) +
+dataset_rq2 %>%
+  filter(!is.na(presenza_lavoro)) %>%
+  count(macro_zone, presenza_lavoro) %>%
+  group_by(macro_zone) %>%
+  mutate(pct = n / sum(n)) %>%
+  ggplot(aes(x = presenza_lavoro, y = pct, fill = macro_zone)) +
+  geom_col(show.legend = FALSE) +
   facet_wrap(~macro_zone) +
   scale_y_continuous(labels = percent) +
   labs(
