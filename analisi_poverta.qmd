@@ -15,6 +15,13 @@ execute:
 ---
 
 ```{r}
+#install.packages("corrplot")
+#install.packages("gtsummary")
+#install.packages("modelsummary")
+#install.packages("sandwich")
+#install.packages("performance")
+#install.packages("see")
+#library("see")
 library(haven)
 library(here)
 library(tidyverse)
@@ -249,8 +256,6 @@ dataset_rq1$ampiezza_cat <- cut(
 
 ```{r}
 #variabile dipendente
-library(gtsummary)
-
 dataset_rq1 %>%
   select(resa) %>%
   tbl_summary(
@@ -269,8 +274,6 @@ dataset_rq1 %>%
 
 ```{r}
 # variabili indipendenti
-library(gtsummary)
-
 dataset_rq1 %>%
   select(pesticidi, animali_traino, attrezzature, fertilizzanti) %>%
   mutate(across(everything(), ~factor(.x, levels = c(2, 1), labels = c("No", "Sì")))) %>%
