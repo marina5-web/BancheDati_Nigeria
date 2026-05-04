@@ -29,7 +29,6 @@ library(sandwich)
 
 ---
 
-## 2. Download dati
 
 ```{r}
 links <- c(
@@ -55,19 +54,15 @@ data_list <- lapply(names(links), function(x) {
   return(read_dta(dest))
 })
 
-# Assegnazione con nomi parlanti coerenti con il questionario
-data_superfici <- data_list[[1]]  # secta1    — ampiezza e GPS dei plot
-data_raccolto  <- data_list[[2]]  # secta3i   — raccolto per coltura
-data_inputs    <- data_list[[3]]  # secta11c2 — input agricoli (pesticidi, fertilizzanti, ecc.)
-data_shock     <- data_list[[4]]  # sect15a   — shock subiti dall'household
-data_lavoro    <- data_list[[5]]  # sect3a    — presenza a lavoro negli ultimi 7 giorni
+data_superfici <- data_list[[1]]  
+data_raccolto  <- data_list[[2]]  
+data_inputs    <- data_list[[3]]  
+data_shock     <- data_list[[4]]  
+data_lavoro    <- data_list[[5]]   
 ```
 
 ---
 
-## 3. Pulizia dati
-
-### 3.1 Superfici (secta1)
 
 ```{r}
 #Pulizia data_superfici
@@ -88,7 +83,6 @@ superfici_pulito <- data_superfici %>%
   filter(is.finite(ampiezza), ampiezza > 0)
 ```
 
-### 3.2 Raccolto (secta3i)
 
 ```{r}
 #Pulizia data_raccolto
@@ -102,7 +96,6 @@ raccolto_pulito <- data_raccolto %>%
 ```
 
 
-### 3.3 Input agricoli (secta11c2)
 
 ```{r}
 #Pulizia data_inputs
@@ -129,7 +122,6 @@ inputs_pulito <- data_inputs %>%
   )
 ```
 
-### 3.4 Lavoro agricolo (sect3a)
 
 ```{r}
 #Pulizia data_lavoro
@@ -160,7 +152,6 @@ lavoro_pulito <- data_lavoro %>%
   filter(!is.na(motivo_assenza))
 ```
 
-### 3.5 Shock (sect15a)
 
 ```{r}
 #pulizia data_shock
@@ -189,9 +180,6 @@ shock_pulito <- data_shock %>%
 
 ---
 
-## 4. Costruzione dei dataset analitici
-
-### 4.1 Dataset RQ1 — strategie di adattamento
 
 ```{r}
 dataset_rq1 <- raccolto_pulito %>%
@@ -201,7 +189,6 @@ dataset_rq1 <- raccolto_pulito %>%
   filter(resa <= 5000) # Escludiamo outlier con resa > 5000 kg/ha
 ```
 
-### 4.2 Dataset RQ2 — differenze tra Nord e Sud
 ```{r}
 dataset_rq2 <- raccolto_pulito %>%
   inner_join(superfici_pulito, by = c("hhid", "plotid")) %>%
@@ -227,7 +214,7 @@ dataset_rq2 <- raccolto_pulito %>%
 
 ---
 
-## 5. Creazione classi per RQ1
+### RQ1
 
 ```{r}
 # Ampiezza categorizzata 
@@ -239,13 +226,17 @@ dataset_rq1$ampiezza_cat <- cut(
   labels = c(1,2,3,4),
   include.lowest = TRUE
 )
+
+dataset_rq1$resa_cat = factor(
+      cut(dataset_rq1$resa,
+          breaks = c(0, 50, 250, 1000, 5000),
+          labels = c("Molto Bassa", "Bassa", "Media", "Alta"),
+          include.lowest = TRUE),
+    )
 ```
 
 ---
 
-## 6. RQ1 — Principali strategie di adattamento
-
-### 6.1 Analisi descrittiva
 
 ```{r}
 #variabile dipendente
@@ -336,7 +327,6 @@ dataset_rq1 %>%
   theme_minimal()
 ```
 
-### 6.2 Analisi bivariata
 
 ```{r}
 mod_pesticidi <- lm(
@@ -370,7 +360,7 @@ mod_fertilizzanti <- lm(
 summary(mod_fertilizzanti)
 ```
 
-### 6.3 Analisi multivariata
+
 
 ```{r}
 mod_totale <- lm(
@@ -443,7 +433,9 @@ modelsummary(
   gof_omit = "IC|Log.Lik|F|RMSE" 
 )
 ```
-```{r, fig.width=10, fig.height=8}
+
+
+```{r}
 #Test di Multicollinearità (VIF)
 vif_test <- check_collinearity(mod_totale)
 print(vif_test)
@@ -455,9 +447,9 @@ plot(vif_test)
 check_model(mod_totale, check = c("linearity", "homogeneity", "qq", "outliers"))
 ```
 
-## 7. RQ2 — Differenze tra Nord e Sud
 
-### 7.1 Analisi descrittiva
+
+### RQ2
 
 ```{r}
 ggplot(dataset_rq2, aes(x = resa_cat, fill = macro_zone)) +
