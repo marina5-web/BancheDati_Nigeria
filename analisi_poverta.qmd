@@ -145,9 +145,9 @@ lavoro_pulito <- data_lavoro %>%
   ) %>%
   group_by(hhid) %>%
   summarise(
-    presenza_lavoro = first(presenza_lavoro),
+    presenza_lavoro = first(na.omit(presenza_lavoro)),
     #presenza_lavoro = if_else(any(s3q5 == 1, na.rm = TRUE), "Presente", "Assente"),
-    motivo_assenza  = first(motivo_assenza),
+    motivo_assenza  = first(na.omit(motivo_assenza)),
     #motivo_assenza = if(all(is.na(motivo_assenza))) NA_character_ else names(which.max(table(motivo_assenza))),
     .groups = "drop"
   )%>%
@@ -408,7 +408,7 @@ modelsummary(
 
 ```{r}
 #modello logaritmico
-mod_log <- lm(
+mod_log_rq1 <- lm(
   log(resa + 1) ~
     factor(pesticidi,      levels = c(2, 1), labels = c("No", "Sì")) +
     factor(animali_traino, levels = c(2, 1), labels = c("No", "Sì")) +
@@ -423,7 +423,7 @@ mod_log <- lm(
 #tabella comparativa modelli OLS vs logaritmico
 modelli_comparativi <- list(
   "OLS" = mod_totale,
-  "Log-OLS" = mod_log
+  "Log-OLS" = mod_log_rq1
 )
 modelsummary(
   modelli_comparativi,
@@ -483,14 +483,14 @@ ggplot(dataset_rq2 %>% filter(!is.na(presenza_lavoro)),
 ```
 
 ```{r}
-ggplot(dataset_rq2 %>% filter(!is.na(motivo_assenza)),
-       aes(x = motivo_assenza, fill = macro_zone)) +
-  geom_bar(
-    aes(y = (..count..)/tapply(..count.., ..PANEL.., sum)[..PANEL..]),
-    show.legend = FALSE
-  ) +
+dataset_rq2 %>%
+  filter(!is.na(motivo_assenza)) %>%
+  count(macro_zone, motivo_assenza) %>%
+  group_by(macro_zone) %>%
+  mutate(pct = n / sum(n)) %>%
+  ggplot(aes(x = motivo_assenza, y = pct, fill = macro_zone)) +
+  geom_col(show.legend = FALSE) +
   facet_wrap(~macro_zone) +
-  scale_y_continuous(labels = percent) +
   coord_flip() +
   labs(
     title = "Distribuzione Motivi di Assenza",
@@ -501,12 +501,13 @@ ggplot(dataset_rq2 %>% filter(!is.na(motivo_assenza)),
 ```
 
 ```{r}
-ggplot(dataset_rq2 %>% filter(shock_agricolo != "Nessuno Shock"),
-       aes(x = shock_agricolo, fill = macro_zone)) +
-  geom_bar(
-    aes(y = (..count..)/tapply(..count.., ..PANEL.., sum)[..PANEL..]),
-    show.legend = FALSE
-  ) +
+dataset_rq2 %>%
+  filter(shock_agricolo != "Nessuno Shock") %>%
+  count(macro_zone, shock_agricolo) %>%
+  group_by(macro_zone) %>%
+  mutate(pct = n / sum(n)) %>%
+  ggplot(aes(x = shock_agricolo, y = pct, fill = macro_zone)) +
+  geom_col(show.legend = FALSE) +
   facet_wrap(~macro_zone) +
   scale_y_continuous(labels = percent) +
   coord_flip() +
@@ -668,7 +669,7 @@ summary(mod_interazione)
 ```
 
 ```{r}
-mod_log <- lm(
+mod_log_rq2 <- lm(
   log(resa + 1) ~ macro_zone * shock_agricolo + presenza_lavoro,
   data = dataset_rq2
 )
@@ -676,13 +677,13 @@ summary(mod_log)
 ```
 
 ```{r}
-plot_model(mod_log, show.values = TRUE, vline.color = "red") +
+plot_model(mod_log_rq2, show.values = TRUE, vline.color = "red") +
   theme_minimal() +
   labs(title = "Determinanti della Resa Agricola in Nigeria")
 ```
 
 ```{r}
-plot_model(mod_log, type = "pred", terms = c("shock_agricolo", "macro_zone")) +
+plot_model(mod_log_rq2, type = "pred", terms = c("shock_agricolo", "macro_zone")) +
   theme_minimal() +
   labs(title = "Effetto degli Shock sulla Resa: Nord vs Sud")
 ```
