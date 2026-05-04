@@ -143,9 +143,9 @@ lavoro_pulito <- data_lavoro %>%
   ) %>%
   group_by(hhid) %>%
   summarise(
-    presenza_lavoro = first(presenza_lavoro),
+    presenza_lavoro = first(na.omit(presenza_lavoro)),
     #presenza_lavoro = if_else(any(s3q5 == 1, na.rm = TRUE), "Presente", "Assente"),
-    motivo_assenza  = first(motivo_assenza),
+    motivo_assenza  = first(na.omit(motivo_assenza)),
     #motivo_assenza = if(all(is.na(motivo_assenza))) NA_character_ else names(which.max(table(motivo_assenza))),
     .groups = "drop",
   )
