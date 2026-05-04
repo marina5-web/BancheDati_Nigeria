@@ -3,9 +3,11 @@ title: "Analisi della povertà stagionale in Nigeria"
 author: "Damiano, Giorgio, Sangiorgi, Serenari, Valente"
 date: "2026-05-07"
 format: 
-  pdf:
+  beamer:
     header-includes: 
       \usepackage{graphicx}
+      \titlegraphic{\includegraphics[width=0.3\textwidth]{/Users/paoloverme/Documents/Teaching/TeachingModules/Templates/AlmaMaterLogo2.png}}
+      \setbeamertemplate{footline}[page number]
 execute:
   echo: false #Includes the source code
   output:  false #Includes results
@@ -133,7 +135,7 @@ lavoro_pulito <- data_lavoro %>%
       TRUE      ~ NA_character_
     ),
     motivo_assenza = case_when(
-      presenza_lavoro == "Presente" ~  NA_character_ ,
+      presenza_lavoro == "Presente" ~  NA_character_,
       s3q8b %in% c(1, 3, 5, 8) ~ "Altro (Vacanza/Turni/Chiuso)",
       s3q8b == 2                ~ "Malattia",
       s3q8b == 6                ~ "Lavoro stagionale",
@@ -147,14 +149,16 @@ lavoro_pulito <- data_lavoro %>%
     #presenza_lavoro = if_else(any(s3q5 == 1, na.rm = TRUE), "Presente", "Assente"),
     motivo_assenza  = first(motivo_assenza),
     #motivo_assenza = if(all(is.na(motivo_assenza))) NA_character_ else names(which.max(table(motivo_assenza))),
-    .groups = "drop",
-  )
+    .groups = "drop"
+  )%>%
+  filter(!is.na(motivo_assenza))
 ```
+
 
 ```{r}
 #pulizia data_shock
 shock_pulito <- data_shock %>%
-  filter(s15aq1 ==1) %>%
+  filter(s15aq1 ==1) |> 
   mutate(
     shock_agricolo = case_when(
       shock_cd == 10            ~ "Incendio",
@@ -174,6 +178,9 @@ shock_pulito <- data_shock %>%
     .groups = "drop"
   )
 ```
+
+---
+
 
 ```{r}
 dataset_rq1 <- raccolto_pulito %>%
@@ -228,6 +235,9 @@ dataset_rq1$resa_cat = factor(
           include.lowest = TRUE),
     )
 ```
+
+---
+
 
 ```{r}
 #variabile dipendente
@@ -443,12 +453,8 @@ check_model(mod_totale, check = c("linearity", "homogeneity", "qq", "outliers"))
 ### RQ2
 
 ```{r}
-dataset_rq2 %>%
-  count(macro_zone, resa_cat) %>%
-  group_by(macro_zone) %>%
-  mutate(pct = n / sum(n)) %>%
-  ggplot(aes(x = resa_cat, y = pct, fill = macro_zone)) +
-  geom_col(show.legend = FALSE) +
+ggplot(dataset_rq2, aes(x = resa_cat, fill = macro_zone)) +
+  geom_bar(aes(y = (..count..)/sum(..count..)), show.legend = FALSE) +
   facet_wrap(~macro_zone) +
   scale_y_continuous(labels = percent) +
   labs(
@@ -460,13 +466,12 @@ dataset_rq2 %>%
 ```
 
 ```{r}
-dataset_rq2 %>%
-  filter(!is.na(presenza_lavoro)) %>%
-  count(macro_zone, presenza_lavoro) %>%
-  group_by(macro_zone) %>%
-  mutate(pct = n / sum(n)) %>%
-  ggplot(aes(x = presenza_lavoro, y = pct, fill = macro_zone)) +
-  geom_col(show.legend = FALSE) +
+ggplot(dataset_rq2 %>% filter(!is.na(presenza_lavoro)),
+       aes(x = presenza_lavoro, fill = macro_zone)) +
+  geom_bar(
+    aes(y = (..count..)/tapply(..count.., ..PANEL.., sum)[..PANEL..]),
+    show.legend = FALSE
+  ) +
   facet_wrap(~macro_zone) +
   scale_y_continuous(labels = percent) +
   labs(
@@ -646,6 +651,7 @@ ggplot(dataset_rq2 %>% filter(!is.na(motivo_assenza)),
 ### 7.3 Analisi multivariata
 
 ```{r}
+dataset_rq2$presenza_lavoro = as.factor(ifelse(is.na(dataset_rq2$presenza_lavoro), 1, 0))
 mod_base <- lm(
   resa ~ macro_zone + shock_agricolo + presenza_lavoro,
   data = dataset_rq2
