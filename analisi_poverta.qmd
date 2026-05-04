@@ -148,8 +148,7 @@ lavoro_pulito <- data_lavoro %>%
     motivo_assenza  = first(motivo_assenza),
     #motivo_assenza = if(all(is.na(motivo_assenza))) NA_character_ else names(which.max(table(motivo_assenza))),
     .groups = "drop",
-  )%>%
-  filter(!is.na(motivo_assenza))
+  )
 ```
 
 ```{r}
