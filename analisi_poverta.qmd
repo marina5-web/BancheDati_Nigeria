@@ -15,13 +15,6 @@ execute:
 ---
 
 ```{r}
-#install.packages("corrplot")
-#install.packages("gtsummary")
-#install.packages("modelsummary")
-#install.packages("sandwich")
-#install.packages("performance")
-#install.packages("see")
-#library("see")
 library(haven)
 library(here)
 library(tidyverse)
@@ -140,7 +133,7 @@ lavoro_pulito <- data_lavoro %>%
       TRUE      ~ NA_character_
     ),
     motivo_assenza = case_when(
-      presenza_lavoro == "Presente" ~ "Nessuna assenza",
+      presenza_lavoro == "Presente" ~ , NA_character_
       s3q8b %in% c(1, 3, 5, 8) ~ "Altro (Vacanza/Turni/Chiuso)",
       s3q8b == 2                ~ "Malattia",
       s3q8b == 6                ~ "Lavoro stagionale",
@@ -163,10 +156,9 @@ lavoro_pulito <- data_lavoro %>%
 ```{r}
 #pulizia data_shock
 shock_pulito <- data_shock %>%
-  #filter(s15aq1 ==1)
+  filter(s15aq1 ==1)
   mutate(
     shock_agricolo = case_when(
-      s15aq1==2             ~ "Nessuno Shock",
       shock_cd == 10            ~ "Incendio",
       shock_cd == 12            ~ "Piogge povere",
       shock_cd == 13            ~ "Alluvione",
@@ -247,6 +239,8 @@ dataset_rq1$resa_cat = factor(
 
 ```{r}
 #variabile dipendente
+library(gtsummary)
+
 dataset_rq1 %>%
   select(resa) %>%
   tbl_summary(
@@ -265,6 +259,8 @@ dataset_rq1 %>%
 
 ```{r}
 # variabili indipendenti
+library(gtsummary)
+
 dataset_rq1 %>%
   select(pesticidi, animali_traino, attrezzature, fertilizzanti) %>%
   mutate(across(everything(), ~factor(.x, levels = c(2, 1), labels = c("No", "Sì")))) %>%
@@ -416,7 +412,7 @@ mod_log <- lm(
     factor(animali_traino, levels = c(2, 1), labels = c("No", "Sì")) +
     factor(attrezzature,   levels = c(2, 1), labels = c("No", "Sì")) +
     factor(fertilizzanti,  levels = c(2, 1), labels = c("No", "Sì")) +
-    factor(ampiezza_cat,   levels = c(1, 2, 3, 4), labels = c("Piccolo", "Medio-piccolo", "Medio-grande", "Grande")),
+    ampiezza_cat,
   data = dataset_rq1
 )
 ```
