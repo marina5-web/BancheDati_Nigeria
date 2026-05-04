@@ -133,7 +133,7 @@ lavoro_pulito <- data_lavoro %>%
       TRUE      ~ NA_character_
     ),
     motivo_assenza = case_when(
-      presenza_lavoro == "Presente" ~ , NA_character_
+      presenza_lavoro == "Presente" ~  NA_character_ ,
       s3q8b %in% c(1, 3, 5, 8) ~ "Altro (Vacanza/Turni/Chiuso)",
       s3q8b == 2                ~ "Malattia",
       s3q8b == 6                ~ "Lavoro stagionale",
@@ -152,11 +152,10 @@ lavoro_pulito <- data_lavoro %>%
   filter(!is.na(motivo_assenza))
 ```
 
-
 ```{r}
 #pulizia data_shock
 shock_pulito <- data_shock %>%
-  filter(s15aq1 ==1)
+  filter(s15aq1 ==1) %>%
   mutate(
     shock_agricolo = case_when(
       shock_cd == 10            ~ "Incendio",
@@ -176,9 +175,6 @@ shock_pulito <- data_shock %>%
     .groups = "drop"
   )
 ```
-
----
-
 
 ```{r}
 dataset_rq1 <- raccolto_pulito %>%
@@ -233,9 +229,6 @@ dataset_rq1$resa_cat = factor(
           include.lowest = TRUE),
     )
 ```
-
----
-
 
 ```{r}
 #variabile dipendente
