@@ -443,8 +443,12 @@ check_model(mod_totale, check = c("linearity", "homogeneity", "qq", "outliers"))
 ### RQ2
 
 ```{r}
-ggplot(dataset_rq2, aes(x = resa_cat, fill = macro_zone)) +
-  geom_bar(aes(y = (..count..)/sum(..count..)), show.legend = FALSE) +
+dataset_rq2 %>%
+  count(macro_zone, resa_cat) %>%
+  group_by(macro_zone) %>%
+  mutate(pct = n / sum(n)) %>%
+  ggplot(aes(x = resa_cat, y = pct, fill = macro_zone)) +
+  geom_col(show.legend = FALSE) +
   facet_wrap(~macro_zone) +
   scale_y_continuous(labels = percent) +
   labs(
