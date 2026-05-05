@@ -2,29 +2,16 @@
 title: "Analisi della povertà stagionale in Nigeria"
 author: "Damiano, Giorgio, Sangiorgi, Serenari, Valente"
 date: "2026-05-07"
-format: beamer:
-    theme: Madrid
-    colortheme: default
-    fonttheme: structurebold
-    header-includes: |
-      \definecolor{unibo}{RGB}{181, 18, 27}
-      \setbeamercolor{structure}{fg=unibo}
-      \setbeamercolor{title}{bg=unibo, fg=white}
-      \setbeamercolor{frametitle}{bg=unibo, fg=white}
-      \setbeamercolor{block title}{bg=unibo, fg=white}
-      \setbeamercolor{section in head/foot}{bg=unibo, fg=white}
-      \setbeamercolor{subsection in head/foot}{bg=unibo!80, fg=white}
-      \setbeamercolor{author in head/foot}{bg=unibo, fg=white}
-      \setbeamercolor{date in head/foot}{bg=unibo!80, fg=white}
-      \setbeamercolor{title in head/foot}{bg=unibo, fg=white}
-      \usepackage{booktabs}
+format: 
+  pdf:
+    header-includes: 
       \usepackage{graphicx}
 execute:
-  echo: false
-  output: true
-  warning: false
-  message: false
-  error: false
+  echo: false #Includes the source code
+  output:  false #Includes results
+  error: false  #Excludes errors
+  message: false  #Excludes messages
+  warning: false #Excludes warnings    
 ---
 
 ```{r setup, include=FALSE}
