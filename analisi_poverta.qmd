@@ -237,7 +237,6 @@ dataset_rq1$resa_cat = factor(
 
 ---
 
-
 ```{r}
 #variabile dipendente
 library(gtsummary)
@@ -651,7 +650,7 @@ ggplot(dataset_rq2 %>% filter(!is.na(motivo_assenza)),
 ### 7.3 Analisi multivariata
 
 ```{r}
-#dataset_rq2$presenza_lavoro = as.factor(ifelse(is.na(dataset_rq2$presenza_lavoro), 1, 0))
+dataset_rq2$presenza_lavoro = as.factor(ifelse(is.na(dataset_rq2$presenza_lavoro), 1, 0))
 mod_base <- lm(
   resa ~ factor(zone) + shock_agricolo + presenza_lavoro 
        #+ factor(pesticidi,      levels = c(2,1), labels = c("No","Sì"))
@@ -664,64 +663,109 @@ summary(mod_base)
 ```
 
 ```{r}
-dataset_rq2 <- dataset_rq2 %>%
-  mutate(zone = factor(zone))
-mod_interazione <- lm(
-  resa ~ zone * shock_agricolo + presenza_lavoro 
-  + zone * factor(pesticidi, levels = c(2,1), labels = c("No", "Sì"))
-  + zone * factor(animali_traino, levels = c(2,1), labels = c("No", "Sì"))
-  + zone * factor(attrezzature, levels = c(2,1), labels = c("No", "Sì"))
-  + zone * factor(fertilizzanti, levels = c(2,1), labels = c("No", "Sì")),
-  data = dataset_rq2
-)
-summary(mod_interazione)
+#dataset_rq2 <- dataset_rq2 %>%
+  #mutate(zone = factor(zone))
+#mod_interazione <- lm(
+ # resa ~ zone * shock_agricolo + presenza_lavoro 
+  #+ zone * factor(pesticidi, levels = c(2,1), labels = c("No", "Sì"))
+ # + zone * factor(animali_traino, levels = c(2,1), labels = c("No", "Sì"))
+  #+ zone * factor(attrezzature, levels = c(2,1), labels = c("No", "Sì"))
+  #+ zone * factor(fertilizzanti, levels = c(2,1), labels = c("No", "Sì")),
+  #data = dataset_rq2
+#)
+#summary(mod_interazione)
 
 #step_aic= step(mod_interazione, direction = "both", trace = FALSE)
 ```
 
 ```{r}
-mod_log_rq2 <- lm(
-  log(resa + 1) ~ macro_zone * shock_agricolo + presenza_lavoro 
-  + macro_zone * factor(pesticidi, levels = c(2,1), labels = c("No", "Sì"))
-  + macro_zone * factor(animali_traino, levels = c(2,1), labels = c("No", "Sì"))
-  + macro_zone * factor(attrezzature, levels = c(2,1), labels = c("No", "Sì"))
-  + macro_zone * factor(fertilizzanti, levels = c(2,1), labels = c("No", "Sì")),
-  data = dataset_rq2
-)
-summary(mod_log_rq2)
+#mod_log_rq2 <- lm(
+ # log(resa + 1) ~ macro_zone * shock_agricolo + presenza_lavoro 
+ # + macro_zone * factor(pesticidi, levels = c(2,1), labels = c("No", "Sì"))
+ # + macro_zone * factor(animali_traino, levels = c(2,1), labels = c("No", "Sì"))
+ # + macro_zone * factor(attrezzature, levels = c(2,1), labels = c("No", "Sì"))
+ # + macro_zone * factor(fertilizzanti, levels = c(2,1), labels = c("No", "Sì")),
+ # data = dataset_rq2
+#)
+#summary(mod_log_rq2)
 ```
 
 ```{r}
-plot_model(mod_log_rq2, show.values = TRUE, vline.color = "red") +
-  theme_minimal() +
-  labs(title = "Determinanti della Resa Agricola in Nigeria")
+# Modello A - effetto di shock e presenza_lavoro per zona
+mod_A <- lm(
+  resa ~ macro_zone * shock_agricolo + 
+         macro_zone * presenza_lavoro,
+  data = dataset_rq2 %>% filter(!is.na(presenza_lavoro))
+)
+step_A <- step(mod_A, direction = "both", trace = FALSE)
+formula(step_A)
+
+# Modello B - solo sugli assenti, effetto del motivo per zona
+mod_B <- lm(
+  resa ~ macro_zone * shock_agricolo + 
+         macro_zone * motivo_assenza,
+  data = dataset_rq2 %>% filter(!is.na(motivo_assenza))
+)
+step_B <- step(mod_B, direction = "both", trace = FALSE)
+formula(step_B)
 ```
 
+
 ```{r}
-library(ggeffects)
-# Crea griglia di predizione
-newdata <- expand.grid(
-  shock_agricolo  = unique(dataset_rq2$shock_agricolo),
-  macro_zone      = c("Nord", "Sud"),
-  pesticidi       = 2,
-  animali_traino  = 2,
-  attrezzature    = 2,
-  fertilizzanti   = 2,
-  presenza_lavoro = "Presente"
-)
+griglia_finale <- expand.grid(
+  shock_agricolo = unique(dataset_rq2$shock_agricolo),
+  macro_zone     = c("Nord", "Sud")
+) %>%
+  mutate(predicted = predict(step_A, newdata = .))
 
-newdata$pred <- exp(predict(mod_log_rq2, newdata = newdata)) - 1
-
-# Grafico
-ggplot(newdata, aes(x = shock_agricolo, y = pred, color = macro_zone, group = macro_zone)) +
+ggplot(griglia_finale, aes(x = reorder(shock_agricolo, predicted),
+                            y = predicted,
+                            color = macro_zone, group = macro_zone)) +
   geom_point(size = 3) +
-  geom_line() +
+  geom_line(linewidth = 0.8) +
   coord_flip() +
-  labs(
-    title  = "Effetto degli Shock sulla Resa: Nord vs Sud",
-    x      = "Tipo di Shock",
-    y      = "Resa Predetta (kg/ha)",
-    color  = "Zona"
-  ) +
-  theme_minimal()
+  scale_color_manual(values = c("Nord" = "#2C5F2D", "Sud" = "#BB2E29"),
+                     name = "Zona") +
+  labs(title = "Effetto degli Shock sulla Resa: Nord vs Sud",
+       subtitle = "Valori predetti — interazione zona × shock significativa",
+       x = "Tipo di Shock", y = "Resa Predetta (kg/ha)") +
+  theme_minimal(base_size = 10)
+```
+
+
+```{r}
+# 1. Boxplot della resa per shock e zona
+ggplot(dataset_rq2 %>% filter(shock_agricolo != "Nessuno Shock"),
+       aes(x = shock_agricolo, y = resa, fill = macro_zone)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.8) +
+  coord_flip(xlim = NULL, ylim = c(0, 2000)) +
+  scale_fill_manual(values = c("Nord" = "#2C5F2D", "Sud" = "#BB2E29"),
+                    name = "Zona") +
+  labs(title = "Distribuzione della Resa per Shock e Zona",
+       subtitle = "Valori troncati a 2000 kg/ha per leggibilità",
+       x = "Tipo di Shock", y = "Resa (kg/ha)") +
+  theme_minimal(base_size = 10)
+```
+
+```{r}
+
+# 3. Predicted + intervalli di confidenza dal modello
+griglia_ci <- expand.grid(
+  shock_agricolo = unique(dataset_rq2$shock_agricolo),
+  macro_zone     = c("Nord", "Sud")
+)
+pred_ci <- predict(step_A, newdata = griglia_ci, interval = "confidence")
+griglia_ci <- cbind(griglia_ci, pred_ci)
+
+ggplot(griglia_ci, aes(x = reorder(shock_agricolo, fit),
+                        y = fit, color = macro_zone, group = macro_zone)) +
+  geom_point(size = 3) +
+  geom_line(linewidth = 0.8) +
+  geom_errorbar(aes(ymin = lwr, ymax = upr), width = 0.2) +
+  coord_flip() +
+  scale_color_manual(values = c("Nord" = "#2C5F2D", "Sud" = "#BB2E29"),
+                     name = "Zona") +
+  labs(title = "Resa Predetta con Intervalli di Confidenza al 95%",
+       x = "Tipo di Shock", y = "Resa Predetta (kg/ha)") +
+  theme_minimal(base_size = 10)
 ```

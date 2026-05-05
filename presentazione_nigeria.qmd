@@ -1,0 +1,666 @@
+---
+title: "Analisi della Povertà Stagionale in Nigeria"
+subtitle: "Agricoltura, Shock e Mercato del Lavoro"
+author: "Damiano, Giorgio, Sangiorgi, Serenari, Valente"
+date: "07/05/26"
+institute: "Nigeria General Household Survey – Panel Wave 4 (Harvest 2019)"
+lang: it
+format:
+  beamer:
+    theme: Madrid
+    colortheme: seahorse
+    fonttheme: structurebold
+    aspectratio: 169
+    navigation: horizontal
+    section-titles: true
+    include-in-header:
+      text: |
+        \usepackage{booktabs}
+        \usepackage{longtable}
+        \usepackage{array}
+        \usepackage{multirow}
+        \usepackage{xcolor}
+        \definecolor{verdeforesta}{RGB}{44,95,45}
+
+---
+
+```{r setup}
+library(haven)
+library(tidyverse)
+library(corrplot)
+library(gtsummary)
+library(modelsummary)
+library(sjPlot)
+library(scales)
+library(performance)
+library(sandwich)
+library(see)
+
+# Cartella dati nella stessa directory del file .qmd
+data_dir <- file.path("data", "raw")
+```
+
+```{r carica-dati}
+links <- c(
+  "secta1"    = "https://github.com/marina5-web/BancheDati_Nigeria/releases/download/v1.0/secta1_harvestw4.dta",
+  "secta3i"   = "https://github.com/marina5-web/BancheDati_Nigeria/releases/download/v1.0/secta3i_harvestw4.dta",
+  "secta11c2" = "https://github.com/marina5-web/BancheDati_Nigeria/releases/download/v1.0/secta11c2_harvestw4.dta",
+  "sect15a"   = "https://github.com/marina5-web/BancheDati_Nigeria/releases/download/v1.0/sect15a_harvestw4.dta",
+  "sect3a"    = "https://github.com/marina5-web/BancheDati_Nigeria/releases/download/v1.0/sect3a_harvestw4.dta"
+)
+
+if (!dir.exists(data_dir)) {
+  dir.create(data_dir, recursive = TRUE)
+}
+
+data_list <- lapply(names(links), function(x) {
+  dest <- file.path(data_dir, paste0(x, ".dta"))
+  if (!file.exists(dest)) {
+    download.file(links[x], dest, mode = "wb")
+  }
+  return(read_dta(dest))
+})
+
+data_superfici <- data_list[[1]]
+data_raccolto  <- data_list[[2]]
+data_inputs    <- data_list[[3]]
+data_shock     <- data_list[[4]]
+data_lavoro    <- data_list[[5]]
+```
+
+```{r pulizia-dati}
+superfici_pulito <- data_superfici %>%
+  rename(superficie = sa1q11, grandezza_prevista = prefilled_gps_area) %>%
+  group_by(hhid, plotid) %>%
+  summarise(
+    ampiezza = if_else(is.na(first(superficie)), first(grandezza_prevista), first(superficie)),
+    .groups = "drop"
+  ) %>%
+  filter(is.finite(ampiezza), ampiezza > 0)
+
+raccolto_pulito <- data_raccolto %>%
+  group_by(hhid, plotid) %>%
+  summarise(raccolto_totale = sum(sa3iq6_conv, na.rm = TRUE), .groups = "drop") %>%
+  filter(raccolto_totale > 0)
+
+inputs_pulito <- data_inputs %>%
+  rename(
+    pesticidi = s11c2q1, animali_traino = s11c2q19,
+    attrezzature = s11c2q27, fertilizzanti = s11dq1a
+  ) %>%
+  group_by(hhid, plotid) %>%
+  summarise(
+    pesticidi      = min(pesticidi,      na.rm = TRUE),
+    animali_traino = min(animali_traino, na.rm = TRUE),
+    attrezzature   = min(attrezzature,   na.rm = TRUE),
+    fertilizzanti  = min(fertilizzanti,  na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  filter(
+    pesticidi      %in% c(1, 2), animali_traino %in% c(1, 2),
+    attrezzature   %in% c(1, 2), fertilizzanti  %in% c(1, 2)
+  )
+
+lavoro_pulito <- data_lavoro %>%
+  mutate(
+    presenza_lavoro = case_when(
+      s3q5 == 1 ~ "Presente", s3q5 == 2 ~ "Assente", TRUE ~ NA_character_
+    ),
+    motivo_assenza = case_when(
+      presenza_lavoro == "Presente" ~ NA_character_,
+      s3q8b %in% c(1, 3, 5, 8)    ~ "Altro (Vacanza/Turni/Chiuso)",
+      s3q8b == 2                   ~ "Malattia",
+      s3q8b == 6                   ~ "Lavoro stagionale",
+      s3q8b == 4                   ~ "Scioperi/Controversie",
+      TRUE                         ~ NA_character_
+    )
+  ) %>%
+  group_by(hhid) %>%
+  summarise(
+    presenza_lavoro = first(na.omit(presenza_lavoro)),
+    motivo_assenza  = first(na.omit(motivo_assenza)),
+    .groups = "drop"
+  ) %>%
+  filter(!is.na(motivo_assenza))
+
+shock_pulito <- data_shock %>%
+  filter(s15aq1 == 1) %>%
+  mutate(
+    shock_agricolo = case_when(
+      shock_cd == 10            ~ "Incendio",
+      shock_cd == 12            ~ "Piogge povere",
+      shock_cd == 13            ~ "Alluvione",
+      shock_cd == 14            ~ "Invasione di parassiti",
+      shock_cd %in% c(18,19,20) ~ "Economico",
+      shock_cd %in% c(1, 3)    ~ "Salute",
+      TRUE                      ~ NA_character_
+    )
+  ) %>%
+  filter(!is.na(shock_agricolo)) %>%
+  group_by(hhid) %>%
+  summarise(shock_agricolo = first(shock_agricolo), zone = first(zone), .groups = "drop")
+
+dataset_rq1 <- raccolto_pulito %>%
+  inner_join(inputs_pulito,    by = c("hhid", "plotid")) %>%
+  inner_join(superfici_pulito, by = c("hhid", "plotid")) %>%
+  mutate(resa = (raccolto_totale / ampiezza) * 10000) %>%
+  filter(resa <= 5000)
+
+tagli <- quantile(dataset_rq1$ampiezza, probs = c(0, 0.25, 0.5, 0.75, 1))
+dataset_rq1$ampiezza_cat <- cut(dataset_rq1$ampiezza, breaks = tagli,
+                                 labels = c(1,2,3,4), include.lowest = TRUE)
+dataset_rq1$resa_cat <- factor(
+  cut(dataset_rq1$resa, breaks = c(0, 50, 250, 1000, 5000),
+      labels = c("Molto Bassa","Bassa","Media","Alta"), include.lowest = TRUE)
+)
+
+dataset_rq2 <- raccolto_pulito %>%
+  inner_join(superfici_pulito, by = c("hhid", "plotid")) %>%
+  inner_join(inputs_pulito,    by = c("hhid", "plotid")) %>%
+  left_join(shock_pulito,  by = "hhid") %>%
+  left_join(lavoro_pulito, by = "hhid") %>%
+  mutate(
+    resa = (raccolto_totale / ampiezza) * 10000,
+    resa_cat = factor(cut(resa, breaks = c(0, 50, 250, 1000, 5000),
+                          labels = c("Molto Bassa","Bassa","Media","Alta"),
+                          include.lowest = TRUE)),
+    macro_zone = factor(case_when(
+      zone %in% c(1, 2, 3) ~ "Nord",
+      zone %in% c(4, 5, 6) ~ "Sud"
+    )),
+    shock_agricolo  = factor(ifelse(is.na(shock_agricolo), "Nessuno Shock", shock_agricolo)),
+    presenza_lavoro = factor(presenza_lavoro)
+  ) %>%
+  filter(resa <= 5000, !is.na(macro_zone))
+```
+
+# Contesto e Dati
+
+## Perché la Nigeria?
+
+\begin{columns}
+\begin{column}{0.48\textwidth}
+\textbf{Contesto economico}
+\begin{itemize}
+  \item Economia più grande dell'Africa sub-sahariana
+  \item $\sim$70\% della popolazione dipende dall'agricoltura
+  \item Forte dualismo \textbf{Nord} (savana) / \textbf{Sud} (foresta tropicale)
+  \item Elevata vulnerabilità a shock climatici e di mercato
+\end{itemize}
+\end{column}
+\begin{column}{0.48\textwidth}
+\textbf{Dataset: GHS-Panel Wave 4}
+\begin{itemize}
+  \item \texttt{secta1} – Superfici dei plot
+  \item \texttt{secta3i} – Quantità di prodotto raccolto (convertito in kg)
+  \item \texttt{secta11c2} – Input agricoli (pesticidi, fertilizzanti, attrezzature, animali da traino)
+  \item \texttt{sect15a} – Shock subiti
+  \item \texttt{sect3a} – Mercato del lavoro (presenza a lavoro e motivo di assenza)
+\end{itemize}
+\vspace{0.3cm}
+\alert{Resa calcolata:} kg/ha $= \frac{\text{raccolto}}{\text{ampiezza}} \times 10000$
+\end{column}
+\end{columns}
+
+## Domande di Ricerca
+
+\begin{block}{RQ1 – Input e Resa Agricola}
+In che misura l'utilizzo di input agricoli (pesticidi, fertilizzanti, attrezzature, animali da traino) influenza la resa dei raccolti?
+\end{block}
+
+\vspace{0.4cm}
+
+\begin{block}{RQ2 – Dualismo Nord/Sud}
+Esistono differenze significative nelle caratteristiche della povertà stagionale tra Nord e Sud della Nigeria, in relazione agli shock subiti e alla partecipazione al lavoro agricolo?
+\end{block}
+
+# RQ1 – Input Agricoli e Resa
+
+## Statistiche Descrittive: Variabile Dipendente
+
+```{r tab-resa, results='asis'}
+dataset_rq1 %>%
+  select(resa) %>%
+  tbl_summary(
+    type = all_continuous() ~ "continuous2",
+    statistic = all_continuous() ~ c(
+      "{mean} ({sd})",
+      "{median} ({p25}, {p75})",
+      "{min}, {max}"
+    ),
+    label = resa ~ "Resa Agricola (kg/ha)"
+  ) %>%
+  modify_header(label ~ "**Variabile**") %>%
+  bold_labels() %>%
+  modify_caption("**Distribuzione della Resa Agricola**") %>%
+  as_kable_extra(booktabs = TRUE) %>%
+  kableExtra::kable_styling(font_size = 8, latex_options = "hold_position")
+```
+
+## Statistiche Descrittive: Input Agricoli
+
+```{r tab-input, results='asis'}
+dataset_rq1 %>%
+  select(pesticidi, animali_traino, attrezzature, fertilizzanti) %>%
+  mutate(across(everything(), ~factor(.x, levels = c(2,1), labels = c("No","Sì")))) %>%
+  tbl_summary(
+    statistic = all_categorical() ~ "{n} ({p}%)",
+    label = list(
+      pesticidi      ~ "Pesticidi",
+      animali_traino ~ "Animali da Traino",
+      attrezzature   ~ "Attrezzature",
+      fertilizzanti  ~ "Fertilizzanti"
+    )
+  ) %>%
+  modify_header(label ~ "**Input Agricolo**") %>%
+  bold_labels() %>%
+  modify_caption("**Frequenza di utilizzo degli input**") %>%
+  as_kable_extra(booktabs = TRUE) %>%
+  kableExtra::kable_styling(font_size = 8, latex_options = "hold_position")
+```
+
+## Distribuzione degli Input Agricoli
+
+```{r grafici-input, fig.height=3.2, fig.width=9, out.width="100%"}
+colore_barre <- "#BB2E29"
+
+p1 <- dataset_rq1 %>%
+  ggplot(aes(x = factor(pesticidi, levels=c(1,2), labels=c("Sì","No")))) +
+  geom_bar(fill = colore_barre, color = "white") +
+  labs(title = "Pesticidi", x = NULL, y = "Frequenza") +
+  theme_minimal(base_size = 9)
+
+p2 <- dataset_rq1 %>%
+  ggplot(aes(x = factor(animali_traino, levels=c(1,2), labels=c("Sì","No")))) +
+  geom_bar(fill = colore_barre, color = "white") +
+  labs(title = "Animali da Traino", x = NULL, y = NULL) +
+  theme_minimal(base_size = 9)
+
+p3 <- dataset_rq1 %>%
+  ggplot(aes(x = factor(attrezzature, levels=c(1,2), labels=c("Sì","No")))) +
+  geom_bar(fill = colore_barre, color = "white") +
+  labs(title = "Attrezzature", x = NULL, y = NULL) +
+  theme_minimal(base_size = 9)
+
+p4 <- dataset_rq1 %>%
+  ggplot(aes(x = factor(fertilizzanti, levels=c(1,2), labels=c("Sì","No")))) +
+  geom_bar(fill = colore_barre, color = "white") +
+  labs(title = "Fertilizzanti", x = NULL, y = NULL) +
+  theme_minimal(base_size = 9)
+
+library(patchwork)
+p1 + p2 + p3 + p4
+```
+
+## Modelli OLS – Risultati
+
+```{r modelli-ols}
+mod_pesticidi <- lm(
+  resa ~ factor(pesticidi, levels=c(2,1), labels=c("No","Sì")), data=dataset_rq1)
+mod_animali <- lm(
+  resa ~ factor(animali_traino, levels=c(2,1), labels=c("No","Sì")), data=dataset_rq1)
+mod_attrezzature <- lm(
+  resa ~ factor(attrezzature, levels=c(2,1), labels=c("No","Sì")), data=dataset_rq1)
+mod_fertilizzanti <- lm(
+  resa ~ factor(fertilizzanti, levels=c(2,1), labels=c("No","Sì")), data=dataset_rq1)
+mod_totale <- lm(
+  resa ~
+    factor(pesticidi,      levels=c(2,1), labels=c("No","Sì")) +
+    factor(animali_traino, levels=c(2,1), labels=c("No","Sì")) +
+    factor(attrezzature,   levels=c(2,1), labels=c("No","Sì")) +
+    factor(fertilizzanti,  levels=c(2,1), labels=c("No","Sì")) +
+    factor(ampiezza_cat,   levels=c(1,2,3,4), labels=c("Q1","Q2","Q3","Q4")),
+  data = dataset_rq1
+)
+```
+
+```{r tab-ols, results='asis'}
+etichette_pulite <- c(
+  "(Intercept)" = "Intercetta",
+  "factor(pesticidi, levels = c(2, 1), labels = c(\"No\", \"Sì\"))Sì"      = "Pesticidi (Sì)",
+  "factor(animali_traino, levels = c(2, 1), labels = c(\"No\", \"Sì\"))Sì" = "Animali da Traino (Sì)",
+  "factor(attrezzature, levels = c(2, 1), labels = c(\"No\", \"Sì\"))Sì"   = "Attrezzature (Sì)",
+  "factor(fertilizzanti, levels = c(2, 1), labels = c(\"No\", \"Sì\"))Sì"  = "Fertilizzanti (Sì)",
+  "factor(ampiezza_cat, levels = c(1, 2, 3, 4), labels = c(\"Q1\", \"Q2\", \"Q3\", \"Q4\"))Q2" = "Ampiezza: Q2",
+  "factor(ampiezza_cat, levels = c(1, 2, 3, 4), labels = c(\"Q1\", \"Q2\", \"Q3\", \"Q4\"))Q3" = "Ampiezza: Q3",
+  "factor(ampiezza_cat, levels = c(1, 2, 3, 4), labels = c(\"Q1\", \"Q2\", \"Q3\", \"Q4\"))Q4" = "Ampiezza: Q4"
+)
+
+modelli_rq1 <- list(
+  "Pesticidi"    = mod_pesticidi,
+  "Animali"      = mod_animali,
+  "Attrezzature" = mod_attrezzature,
+  "Fertilizz."   = mod_fertilizzanti,
+  "Multivariato" = mod_totale
+)
+
+modelsummary(
+  modelli_rq1,
+  stars    = TRUE,
+  coef_rename = etichette_pulite,
+  vcov     = "HC3",
+  title    = "Impatto degli Input Agricoli sulla Resa (OLS, SE robusti HC3)",
+  gof_omit = "IC|Log.Lik|F|RMSE",
+  output   = "latex",
+  booktabs = TRUE,
+  fontsize = "tiny"
+)
+```
+
+## Confronto OLS vs Log-OLS
+
+```{r mod-log}
+mod_log_rq1 <- lm(
+  log(resa + 1) ~
+    factor(pesticidi,      levels=c(2,1), labels=c("No","Sì")) +
+    factor(animali_traino, levels=c(2,1), labels=c("No","Sì")) +
+    factor(attrezzature,   levels=c(2,1), labels=c("No","Sì")) +
+    factor(fertilizzanti,  levels=c(2,1), labels=c("No","Sì")) +
+    ampiezza_cat,
+  data = dataset_rq1
+)
+```
+
+```{r tab-confronto, results='asis'}
+modelsummary(
+  list("OLS" = mod_totale, "Log-OLS" = mod_log_rq1),
+  stars       = TRUE,
+  coef_rename = etichette_pulite,
+  vcov        = "HC3",
+  title       = "Confronto OLS vs Log-OLS",
+  gof_omit    = "IC|Log.Lik|F|RMSE",
+  output      = "latex",
+  booktabs    = TRUE,
+  fontsize    = "small"
+)
+```
+
+## Diagnostica del Modello
+
+```{r vif, fig.height=3, fig.width=8, out.width="95%"}
+vif_test <- check_collinearity(mod_totale)
+plot(vif_test) +
+  theme_minimal(base_size = 9) +
+  labs(title = "Test VIF – Multicollinearità")
+```
+
+\vspace{0.2cm}
+\small Tutti i VIF $< 2$: nessuna multicollinearità rilevante. Eteroschedasticità corretta con SE robusti HC3.
+
+# RQ2 – Nord vs Sud Nigeria
+
+## Distribuzione della Resa per Zona
+
+```{r grafico-resa-zona, fig.height=3.2, fig.width=8, out.width="95%"}
+ggplot(dataset_rq2, aes(x = resa_cat, fill = macro_zone)) +
+  geom_bar(aes(y = (..count..)/sum(..count..)), show.legend = FALSE) +
+  facet_wrap(~macro_zone) +
+  scale_y_continuous(labels = percent) +
+  scale_fill_manual(values = c("Nord" = "#2C5F2D", "Sud" = "#BB2E29")) +
+  labs(title = "Distribuzione Classi di Resa: Nord vs Sud",
+       x = "Classe di Resa", y = "Percentuale") +
+  theme_minimal(base_size = 9)
+```
+
+## Presenza al Lavoro Agricolo
+
+```{r grafico-lavoro, fig.height=3.2, fig.width=8, out.width="95%"}
+ggplot(dataset_rq2 %>% filter(!is.na(presenza_lavoro)),
+       aes(x = presenza_lavoro, fill = macro_zone)) +
+  geom_bar(
+    aes(y = (..count..)/tapply(..count.., ..PANEL.., sum)[..PANEL..]),
+    show.legend = FALSE
+  ) +
+  facet_wrap(~macro_zone) +
+  scale_y_continuous(labels = percent) +
+  scale_fill_manual(values = c("Nord" = "#2C5F2D", "Sud" = "#BB2E29")) +
+  labs(title = "Presenza al lavoro agricolo negli ultimi 7 giorni",
+       x = "Presenza a lavoro", y = "Percentuale") +
+  theme_minimal(base_size = 9)
+```
+
+## Motivi di Assenza dal Lavoro
+
+```{r grafico-motivi, fig.height=3.2, fig.width=8, out.width="95%"}
+dataset_rq2 %>%
+  filter(!is.na(motivo_assenza)) %>%
+  count(macro_zone, motivo_assenza) %>%
+  group_by(macro_zone) %>%
+  mutate(pct = n / sum(n)) %>%
+  ggplot(aes(x = motivo_assenza, y = pct, fill = macro_zone)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~macro_zone) +
+  coord_flip() +
+  scale_fill_manual(values = c("Nord" = "#2C5F2D", "Sud" = "#BB2E29")) +
+  labs(title = "Distribuzione Motivi di Assenza",
+       x = "Motivo", y = "Percentuale") +
+  theme_minimal(base_size = 9)
+```
+
+## Tipologia di Shock Agricoli
+
+```{r grafico-shock, fig.height=3.2, fig.width=8, out.width="95%"}
+dataset_rq2 %>%
+  filter(shock_agricolo != "Nessuno Shock") %>%
+  count(macro_zone, shock_agricolo) %>%
+  group_by(macro_zone) %>%
+  mutate(pct = n / sum(n)) %>%
+  ggplot(aes(x = shock_agricolo, y = pct, fill = macro_zone)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~macro_zone) +
+  scale_y_continuous(labels = percent) +
+  scale_fill_manual(values = c("Nord" = "#2C5F2D", "Sud" = "#BB2E29")) +
+  coord_flip() +
+  labs(title = "Tipologia di Shock Subiti: Nord vs Sud",
+       x = "Tipo di Shock", y = "Percentuale") +
+  theme_minimal(base_size = 9)
+```
+
+## Analisi Bivariata – Test $\chi^2$
+
+```{r chisq}
+data_nord <- dataset_rq2 %>% filter(macro_zone == "Nord")
+data_sud  <- dataset_rq2 %>% filter(macro_zone == "Sud")
+
+chisq_droplevels <- function(data) {
+  tabella <- table(droplevels(data$shock_agricolo), data$resa_cat)
+  chisq.test(tabella)
+}
+
+chisq_shock_nord  <- chisq_droplevels(data_nord)
+chisq_shock_sud   <- chisq_droplevels(data_sud)
+chisq_lavoro_nord <- chisq.test(table(data_nord$presenza_lavoro, data_nord$resa_cat))
+chisq_lavoro_sud  <- chisq.test(table(data_sud$presenza_lavoro,  data_sud$resa_cat))
+chisq_motivo_nord <- chisq.test(table(data_nord$motivo_assenza,  data_nord$resa_cat))
+chisq_motivo_sud  <- chisq.test(table(data_sud$motivo_assenza,   data_sud$resa_cat))
+```
+
+```{r tab-chisq, results='asis'}
+results_completi <- data.frame(
+  Relazione = c("Shock $\\times$ Resa", "Lavoro $\\times$ Resa", "Motivo $\\times$ Resa"),
+  Chi2_Nord   = round(c(chisq_shock_nord$statistic,  chisq_lavoro_nord$statistic, chisq_motivo_nord$statistic), 3),
+  pval_Nord   = round(c(chisq_shock_nord$p.value,    chisq_lavoro_nord$p.value,   chisq_motivo_nord$p.value),   4),
+  Chi2_Sud    = round(c(chisq_shock_sud$statistic,   chisq_lavoro_sud$statistic,  chisq_motivo_sud$statistic),  3),
+  pval_Sud    = round(c(chisq_shock_sud$p.value,     chisq_lavoro_sud$p.value,    chisq_motivo_sud$p.value),    4)
+)
+colnames(results_completi) <- c("Relazione", "$\\chi^2$ Nord", "p Nord", "$\\chi^2$ Sud", "p Sud")
+
+knitr::kable(results_completi, booktabs = TRUE, escape = FALSE,
+             caption = "Test di indipendenza $\\chi^2$ per zona geografica") %>%
+  kableExtra::kable_styling(font_size = 9, latex_options = "hold_position")
+```
+
+## Shock e Resa: Impatto per Zona
+
+```{r grafico-shock-resa, fig.height=3.2, fig.width=8, out.width="95%"}
+ggplot(dataset_rq2 %>% filter(shock_agricolo != "Nessuno Shock"),
+       aes(x = shock_agricolo, fill = resa_cat)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~macro_zone) +
+  scale_y_continuous(labels = percent) +
+  scale_fill_manual(
+    values = c(
+      "Molto Bassa" = "#d7191c", "Bassa"  = "#fdae61",
+      "Media"       = "#a6d96a", "Alta"   = "#1a9641"
+    ),
+    name = "Resa Agricola"
+  ) +
+  coord_flip() +
+  labs(title = "Impatto degli Shock sulla Resa: Nord vs Sud",
+       x = "Tipo di Shock", y = "Proporzione") +
+  theme_minimal(base_size = 9)
+```
+
+## Presenza al Lavoro e Resa
+
+```{r grafico-lavoro-resa, fig.height=3.2, fig.width=8, out.width="95%"}
+ggplot(dataset_rq2 %>% filter(!is.na(presenza_lavoro)),
+       aes(x = presenza_lavoro, fill = resa_cat)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~macro_zone) +
+  scale_y_continuous(labels = percent) +
+  scale_fill_manual(
+    values = c(
+      "Molto Bassa" = "#d7191c", "Bassa"  = "#fdae61",
+      "Media"       = "#a6d96a", "Alta"   = "#1a9641"
+    ),
+    name = "Resa Agricola"
+  ) +
+  labs(title = "Relazione tra Presenza al Lavoro e Resa",
+       x = "Presenza a Lavoro", y = "Proporzione") +
+  theme_minimal(base_size = 9)
+```
+
+## Motivo di Assenza e Resa
+
+```{r grafico-motivo-resa, fig.height=3.2, fig.width=8, out.width="95%"}
+ggplot(dataset_rq2 %>% filter(!is.na(motivo_assenza)),
+       aes(x = motivo_assenza, fill = resa_cat)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~macro_zone) +
+  scale_y_continuous(labels = percent) +
+  scale_fill_manual(
+    values = c(
+      "Molto Bassa" = "#d7191c", "Bassa"  = "#fdae61",
+      "Media"       = "#a6d96a", "Alta"   = "#1a9641"
+    ),
+    name = "Resa Agricola"
+  ) +
+  coord_flip() +
+  labs(title = "Impatto del Motivo di Assenza sulla Resa",
+       x = "Motivo dell'Assenza", y = "Proporzione") +
+  theme_minimal(base_size = 9)
+```
+
+## Modello Multivariato – Stepwise AIC
+
+```{r mod-multivariato, results='hide'}
+# Ricodifica presenza_lavoro per il modello
+dataset_rq2$presenza_lavoro <- as.factor(
+  ifelse(is.na(dataset_rq2$presenza_lavoro), 1, 0)
+)
+
+# Modello A: shock + presenza_lavoro per zona
+mod_A <- lm(
+  resa ~ macro_zone * shock_agricolo +
+         macro_zone * presenza_lavoro,
+  data = dataset_rq2 %>% filter(!is.na(presenza_lavoro))
+)
+step_A <- step(mod_A, direction = "both", trace = FALSE)
+
+# Modello B: shock + motivo_assenza per zona (solo assenti)
+mod_B <- lm(
+  resa ~ macro_zone * shock_agricolo +
+         macro_zone * motivo_assenza,
+  data = dataset_rq2 %>% filter(!is.na(motivo_assenza))
+)
+step_B <- step(mod_B, direction = "both", trace = FALSE)
+```
+
+```{r tab-step, results='asis'}
+modelsummary(
+  list("Mod. A (step)" = step_A, "Mod. B (step)" = step_B),
+  stars    = TRUE,
+  vcov     = "HC3",
+  title    = "Modelli Stepwise AIC: Shock e Zona",
+  gof_omit = "IC|Log.Lik|F|RMSE",
+  output   = "latex",
+  booktabs = TRUE,
+  fontsize = "tiny"
+)
+```
+
+## Distribuzione della Resa per Shock e Zona
+
+```{r grafico-boxplot, fig.height=3.2, fig.width=8, out.width="95%"}
+ggplot(dataset_rq2 %>% filter(shock_agricolo != "Nessuno Shock"),
+       aes(x = shock_agricolo, y = resa, fill = macro_zone)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.8) +
+  coord_flip(xlim = NULL, ylim = c(0, 2000)) +
+  scale_fill_manual(values = c("Nord" = "#2C5F2D", "Sud" = "#BB2E29"),
+                    name = "Zona") +
+  labs(title = "Distribuzione della Resa per Shock e Zona",
+       subtitle = "Valori troncati a 2000 kg/ha per leggibilità",
+       x = "Tipo di Shock", y = "Resa (kg/ha)") +
+  theme_minimal(base_size = 10)
+```
+
+## Resa Predetta per Shock e Zona
+
+```{r grafico-predetto, fig.height=3.2, fig.width=8, out.width="95%"}
+griglia_ci <- expand.grid(
+  shock_agricolo = unique(dataset_rq2$shock_agricolo),
+  macro_zone     = c("Nord", "Sud")
+)
+pred_ci <- predict(step_A, newdata = griglia_ci, interval = "confidence")
+griglia_ci <- cbind(griglia_ci, pred_ci)
+
+ggplot(griglia_ci, aes(x = reorder(shock_agricolo, fit),
+                        y = fit, color = macro_zone, group = macro_zone)) +
+  geom_point(size = 3) +
+  geom_line(linewidth = 0.8) +
+  geom_errorbar(aes(ymin = lwr, ymax = upr), width = 0.2) +
+  coord_flip() +
+  scale_color_manual(values = c("Nord" = "#2C5F2D", "Sud" = "#BB2E29"),
+                     name = "Zona") +
+  labs(title = "Resa Predetta con Intervalli di Confidenza al 95%",
+       subtitle = "Modello stepwise AIC — interazione zona x shock",
+       x = "Tipo di Shock", y = "Resa Predetta (kg/ha)") +
+  theme_minimal(base_size = 10)
+```
+
+# Conclusioni
+
+## Sintesi dei Risultati
+
+\begin{columns}
+\begin{column}{0.48\textwidth}
+\textbf{\color{verdeforesta} RQ1 – Input e Resa}
+\begin{itemize}
+  \item Tutti gli input aumentano la resa in modo significativo
+  \item \alert{Fertilizzanti} e \alert{pesticidi}: effetto più ampio
+  \item Risultati robusti con SE HC3 e Log-OLS
+  \item VIF $< 2$: nessuna multicollinearità
+\end{itemize}
+\end{column}
+\begin{column}{0.48\textwidth}
+\textbf{\color{verdeforesta} RQ2 – Nord vs Sud}
+\begin{itemize}
+  \item Shock agricoli $\rightarrow$ resa: \alert{$\chi^2$ sig. in entrambe le zone}
+  \item Presenza lavoro: non predittiva della resa
+  \item Motivo assenza: non predittiva della resa
+  \item Interazione zona $\times$ shock significativa
+\end{itemize}
+\end{column}
+\end{columns}
+
+## {.plain}
+
+\begin{center}
+\vspace{1.5cm}
+{\Large \textbf{Grazie per l'attenzione}}\\[0.8cm]
+{\large Domande?}\\[1.2cm]
+\small
+\textit{Dati: Nigeria General Household Survey, Panel Wave 4 – Harvest (2019)}\\
+\textit{World Bank Living Standards Measurement Study}
+\end{center}
