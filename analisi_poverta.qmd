@@ -1,19 +1,19 @@
 ---
-title: "Analisi della povertà stagionale in Nigeria"
-author: "Damiano, Giorgio, Sangiorgi, Serenari, Valente"
-date: "2026-05-07"
+title: "Povertà stagionale in Nigeria"
+subtitle: "Presentazione finale"
+author: "Damiano, Giorgio, Sangiorgi,Serenari,Valente"
+institute: "Università di Bologna"
+date: "28 aprile 2026"
 format: 
   beamer:
-    header-includes: 
-      \usepackage{graphicx}
-      \titlegraphic{\includegraphics[width=0.3\textwidth]{/Users/paoloverme/Documents/Teaching/TeachingModules/Templates/AlmaMaterLogo2.png}}
-      \setbeamertemplate{footline}[page number]
-execute:
-  echo: false #Includes the source code
-  output:  false #Includes results
-  error: false  #Excludes errors
-  message: false  #Excludes messages
-  warning: false #Excludes warnings    
+    theme: Madrid
+    colortheme: beaver
+execute: 
+  echo: false
+  warning: false
+  output: false
+  error: false
+  message: false
 ---
 
 ```{r}
@@ -674,6 +674,8 @@ mod_interazione <- lm(
   data = dataset_rq2
 )
 summary(mod_interazione)
+
+#step_aic= step(mod_interazione, direction = "both", trace = FALSE)
 ```
 
 ```{r}
