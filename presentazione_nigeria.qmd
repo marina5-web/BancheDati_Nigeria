@@ -154,7 +154,7 @@ shock_pulito <- data_shock %>%
   summarise(shock_agricolo = first(shock_agricolo), zone = first(zone), .groups = "drop")
 
 dataset_rq1 <- raccolto_pulito %>%
-  inner_join(inputs_pulito,    by = c("hhid", "plotid")) %>%
+  inner_join(inputs_pulito, by = c("hhid", "plotid")) %>%
   inner_join(superfici_pulito, by = c("hhid", "plotid")) %>%
   mutate(resa = (raccolto_totale / ampiezza) * 10000) %>%
   filter(resa <= 5000)
@@ -313,7 +313,7 @@ mod_totale <- lm(
     factor(animali_traino, levels=c(2,1), labels=c("No","Sì")) +
     factor(attrezzature,   levels=c(2,1), labels=c("No","Sì")) +
     factor(fertilizzanti,  levels=c(2,1), labels=c("No","Sì")) +
-    factor(ampiezza_cat,   levels=c(1,2,3,4), labels=c("Q1","Q2","Q3","Q4")),
+    ampiezza_cat,
   data = dataset_rq1
 )
 ```
@@ -325,9 +325,9 @@ etichette_pulite <- c(
   "factor(animali_traino, levels = c(2, 1), labels = c(\"No\", \"Sì\"))Sì" = "Animali da Traino (Sì)",
   "factor(attrezzature, levels = c(2, 1), labels = c(\"No\", \"Sì\"))Sì"   = "Attrezzature (Sì)",
   "factor(fertilizzanti, levels = c(2, 1), labels = c(\"No\", \"Sì\"))Sì"  = "Fertilizzanti (Sì)",
-  "factor(ampiezza_cat, levels = c(1, 2, 3, 4), labels = c(\"Q1\", \"Q2\", \"Q3\", \"Q4\"))Q2" = "Ampiezza: Q2",
-  "factor(ampiezza_cat, levels = c(1, 2, 3, 4), labels = c(\"Q1\", \"Q2\", \"Q3\", \"Q4\"))Q3" = "Ampiezza: Q3",
-  "factor(ampiezza_cat, levels = c(1, 2, 3, 4), labels = c(\"Q1\", \"Q2\", \"Q3\", \"Q4\"))Q4" = "Ampiezza: Q4"
+  "ampiezza_cat2" = "Ampiezza: Medio-Piccola",
+  "ampiezza_cat3" = "Ampiezza: Medio-Grande",
+  "ampiezza_cat4" = "Ampiezza: Grande"
 )
 
 modelli_rq1 <- list(
@@ -356,14 +356,14 @@ modelsummary(
   )
 ```
 
-
-```{r}
-#distribuzione della resa per input agricolo
+---
+## Distribuzione della Resa per Input Agricolo
+```{r, fig.height=3.2, fig.width=9, out.width="95%"}
 dataset_rq1 %>%
   mutate(
-    pesticidi     = factor(pesticidi,      levels = c(1,2), labels = c("Sì","No")),
-    fertilizzanti = factor(fertilizzanti,  levels = c(1,2), labels = c("Sì","No")),
-    attrezzature  = factor(attrezzature,   levels = c(1,2), labels = c("Sì","No")),
+    pesticidi      = factor(pesticidi,      levels = c(1,2), labels = c("Sì","No")),
+    fertilizzanti  = factor(fertilizzanti,  levels = c(1,2), labels = c("Sì","No")),
+    attrezzature   = factor(attrezzature,   levels = c(1,2), labels = c("Sì","No")),
     animali_traino = factor(animali_traino, levels = c(1,2), labels = c("Sì","No"))
   ) %>%
   pivot_longer(cols = c(pesticidi, fertilizzanti, attrezzature, animali_traino),
@@ -375,9 +375,7 @@ dataset_rq1 %>%
     animali_traino = "Animali da Traino"
   )) %>%
   ggplot(aes(x = Utilizzo, y = resa, fill = Utilizzo)) +
-  geom_violin(alpha = 0.6) +
-  geom_jitter(width = 0.15, alpha = 0.15, size = 0.5) +
-  geom_boxplot(width = 0.1, outlier.shape = NA, alpha = 0.8) +
+  geom_boxplot(alpha = 0.7) + 
   scale_fill_manual(values = c("Sì" = "#B5121B", "No" = "#888888")) +
   facet_wrap(~Input) +
   labs(
@@ -388,7 +386,6 @@ dataset_rq1 %>%
   theme_minimal() +
   theme(legend.position = "none")
 ```
-
 
 
 ```{r}
@@ -416,12 +413,13 @@ modelsummary(
   output      = "kableExtra"
 )%>%
   kable_styling(
-    font_size = 4.5, full_width = FALSE, position = "center",
+    font_size = 5.5, full_width = FALSE, position = "center",
     latex_options = "hold_position"
   )
 ```
 
-```{r, fig.height=3.2, fig.width=9, out.width="95%"}
+
+```{r, include=FALSE}
 coef_ols <- tidy(mod_totale, conf.int = TRUE) %>%
   mutate(modello = "OLS")
 
@@ -470,9 +468,9 @@ tidy(mod_log_rq1, conf.int = TRUE) %>%
     "factor(animali_traino, levels = c(2, 1), labels = c(\"No\", \"Sì\"))Sì" = "Animali da Traino (Sì)",
     "factor(attrezzature, levels = c(2, 1), labels = c(\"No\", \"Sì\"))Sì"   = "Attrezzature (Sì)",
     "factor(fertilizzanti, levels = c(2, 1), labels = c(\"No\", \"Sì\"))Sì"  = "Fertilizzanti (Sì)",
-    "ampiezza_cat2" = "Ampiezza: cat2",
-    "ampiezza_cat3" = "Ampiezza: cat3",
-    "ampiezza_cat4" = "Ampiezza: cat4"
+    "factor(ampiezza_cat, levels=c(1,2,3,4), labels=c(\"Q1\" ,\"Q2\",\"Q3\",\"Q4\"))" = "Ampiezza: cat2",
+    "factor(ampiezza_cat, levels=c(1,2,3,4), labels=c(\"Q1\",\"Q2\",\"Q3\",\"Q4\"))" = "Ampiezza: cat3",
+    "factor(ampiezza_cat, levels=c(1,2,3,4), labels=c(\"Q1\",\"Q2\",\"Q3\",\"Q4\"))" = "Ampiezza: cat4"
   )) %>%
   ggplot(aes(x = estimate, y = reorder(term, estimate))) +
   geom_point(color = "#B5121B", size = 3) +
@@ -486,9 +484,6 @@ tidy(mod_log_rq1, conf.int = TRUE) %>%
   ) +
   theme_minimal(base_size = 9)
 ```
-
-
-
 
 
 ## Diagnostica del Modello
