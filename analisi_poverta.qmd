@@ -418,6 +418,45 @@ mod_log_rq1 <- lm(
 ```
 
 ```{r}
+#coefficienti con intervalli di confidenza
+plot_model(mod_log_rq1, show.values = TRUE, vline.color = "#B5121B",
+           colors = "#B5121B") +
+  theme_minimal() +
+  labs(title = "Determinanti della Resa Agricola — Log-OLS (RQ1)")
+```
+
+```{r}
+dataset_rq1 %>%
+  mutate(
+    pesticidi     = factor(pesticidi,      levels = c(1,2), labels = c("Sì","No")),
+    fertilizzanti = factor(fertilizzanti,  levels = c(1,2), labels = c("Sì","No")),
+    attrezzature  = factor(attrezzature,   levels = c(1,2), labels = c("Sì","No")),
+    animali_traino = factor(animali_traino, levels = c(1,2), labels = c("Sì","No"))
+  ) %>%
+  pivot_longer(cols = c(pesticidi, fertilizzanti, attrezzature, animali_traino),
+               names_to = "Input", values_to = "Utilizzo") %>%
+  mutate(Input = recode(Input,
+    pesticidi      = "Pesticidi",
+    fertilizzanti  = "Fertilizzanti",
+    attrezzature   = "Attrezzature",
+    animali_traino = "Animali da Traino"
+  )) %>%
+  ggplot(aes(x = Utilizzo, y = resa, fill = Utilizzo)) +
+  geom_violin(alpha = 0.6) +
+  geom_jitter(width = 0.15, alpha = 0.15, size = 0.5) +
+  geom_boxplot(width = 0.1, outlier.shape = NA, alpha = 0.8) +
+  scale_fill_manual(values = c("Sì" = "#B5121B", "No" = "#888888")) +
+  facet_wrap(~Input) +
+  labs(
+    title = "Distribuzione della Resa per Input Agricolo",
+    x     = "Utilizzo",
+    y     = "Resa (kg/ha)"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+```{r}
 #tabella comparativa modelli OLS vs logaritmico
 modelli_comparativi <- list(
   "OLS" = mod_totale,
@@ -433,7 +472,48 @@ modelsummary(
 )
 ```
 
+```{r}
+library(ggplot2)
+library(broom)
 
+# Estrai i coefficienti da entrambi i modelli
+coef_ols <- tidy(mod_totale, conf.int = TRUE) %>%
+  mutate(modello = "OLS")
+
+coef_log <- tidy(mod_log_rq1, conf.int = TRUE) %>%
+  mutate(modello = "Log-OLS")
+
+# Unisci e rinomina
+bind_rows(coef_ols, coef_log) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(term = recode(term,
+    "factor(pesticidi, levels = c(2, 1), labels = c(\"No\", \"Sì\"))Sì"      = "Pesticidi (Sì)",
+    "factor(animali_traino, levels = c(2, 1), labels = c(\"No\", \"Sì\"))Sì" = "Animali da Traino (Sì)",
+    "factor(attrezzature, levels = c(2, 1), labels = c(\"No\", \"Sì\"))Sì"   = "Attrezzature (Sì)",
+    "factor(fertilizzanti, levels = c(2, 1), labels = c(\"No\", \"Sì\"))Sì"  = "Fertilizzanti (Sì)",
+    "ampiezza_cat2" = "Ampiezza: Medio-Piccola",
+    "ampiezza_cat3" = "Ampiezza: Medio-Grande",
+    "ampiezza_cat4" = "Ampiezza: Grande"
+  )) %>%
+  ggplot(aes(x = estimate, y = term, color = modello, shape = modello)) +
+  geom_point(size = 3, position = position_dodge(width = 0.5)) +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high),
+                 height = 0.2,
+                 position = position_dodge(width = 0.5)) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "gray50") +
+  scale_color_manual(values = c("OLS" = "#888888", "Log-OLS" = "#B5121B"),
+                     name = "Modello") +
+  scale_shape_manual(values = c("OLS" = 16, "Log-OLS" = 17),
+                     name = "Modello") +
+  labs(
+    title    = "Confronto Coefficienti: OLS vs Log-OLS",
+    subtitle = "Con intervalli di confidenza al 95%",
+    x        = "Coefficiente stimato",
+    y        = ""
+  ) +
+  theme_minimal()
+#I punti che non toccano la linea tratteggiata (zero) sono statisticamente significativi.
+```
 ```{r}
 #Test di Multicollinearità (VIF)
 vif_test <- check_collinearity(mod_totale)
