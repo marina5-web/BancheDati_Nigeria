@@ -794,9 +794,7 @@ ggplot(griglia_ci, aes(x = reorder(shock_agricolo, fit),
 \textbf{\color{verdeforesta} RQ2 – Nord vs Sud}
 \begin{itemize}
   \item Shock agricoli $\rightarrow$ resa: \alert{$\chi^2$ sig. in entrambe le zone}
-  \item Presenza lavoro: non predittiva della resa
-  \item Motivo assenza (malattia) significativo al Sud
-  \item Interazione zona $\times$ shock significativa
+  \item Esistono differenze significative tra Nord e Sud, ma non lungo tutte le dimensioni analizzate — solo il tipo di shock ha un effetto eterogeneo tra le due zone (interazione significativa), mentre presenza al lavoro e motivo di assenza non risultano predittivi della resa.
 \end{itemize}
 \end{column}
 \end{columns}
