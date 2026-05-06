@@ -392,14 +392,21 @@ plot(vif_test) +
 ## Distribuzione della Resa per Zona
 
 ```{r grafico-resa-zona, fig.height=3.2, fig.width=8, out.width="95%"}
-ggplot(dataset_rq2, aes(x = resa_cat, fill = macro_zone)) +
-  geom_bar(aes(y = (..count..)/sum(..count..)), show.legend = FALSE) +
+dataset_rq2 %>%
+  count(macro_zone, resa_cat) %>%
+  group_by(macro_zone) %>%
+  mutate(pct = n / sum(n)) %>%
+  ggplot(aes(x = resa_cat, y = pct, fill = macro_zone)) +
+  geom_col(show.legend = FALSE) +
   facet_wrap(~macro_zone) +
   scale_y_continuous(labels = percent) +
   scale_fill_manual(values = c("Nord" = "#2C5F2D", "Sud" = "#BB2E29")) +
-  labs(title = "Distribuzione Classi di Resa: Nord vs Sud",
-       x = "Classe di Resa", y = "Percentuale") +
-  theme_minimal(base_size = 9)
+  labs(
+    title = "Distribuzione Classi di Resa",
+    x     = "Classe di Resa",
+    y     = "Percentuale"
+  ) +
+  theme_minimal()
 ```
 
 ## Presenza al Lavoro Agricolo
