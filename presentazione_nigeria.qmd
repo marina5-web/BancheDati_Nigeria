@@ -790,9 +790,8 @@ ggplot(griglia_ci, aes(x = reorder(shock_agricolo, fit),
 \begin{column}{0.48\textwidth}
 \textbf{\color{verdeforesta} RQ1 – Input e Resa}
 \begin{itemize}
-  \item Il modello dimostra che l'intensificazione agricola tramite input fisici e chimici garentisce ritorni significativi reali in termini di resa
-  \item Esiste una sevesa inefficienza di scala tipica dell'agricoltura di sussistenza
-  \item Risultati robusti con SE HC3 e Log-OLS
+  \item Il modello dimostra che l'intensificazione agricola tramite input fisici e chimici garantisce ritorni significativi reali in termini di resa
+  \item Esiste una severa inefficienza di scala tipica dell'agricoltura di sussistenza
   \item VIF $< 2$: nessuna multicollinearità
 \end{itemize}
 \end{column}
