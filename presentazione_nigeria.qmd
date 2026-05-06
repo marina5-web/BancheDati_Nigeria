@@ -809,7 +809,7 @@ ggplot(griglia_ci, aes(x = reorder(shock_agricolo, fit),
 ## Implicazioni di Policy
 
 \begin{block}{01 – Poli di meccanizzazione agricola condivisa}
-Il modello evidenzia l'impatto positivo di input tecnologici, tuttavia questi strumenti vengono utlizzati da un aminoranza di agricolatori. Poli di meccanizzazione condivisa potrebbero aumentare l'accesso a questi input, migliorando la produttività e abbattendo i costi iniziali per i piccoli agricoltori.
+Il modello evidenzia l'impatto positivo di input tecnologici, tuttavia questi strumenti vengono utlizzati da una minoranza di agricoltori. Poli di meccanizzazione condivisa potrebbero aumentare l'accesso a questi input abbattendo i costi iniziali per i piccoli agricoltori.
 \end{block}
 
 \begin{block}{02 – Sistemi di assicurazione degli shock}
