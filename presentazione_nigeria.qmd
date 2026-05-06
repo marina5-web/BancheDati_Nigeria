@@ -672,7 +672,7 @@ ggplot(dataset_rq2 %>% filter(!is.na(motivo_assenza)),
 ```{r}
 #| output: false
 #| echo: false
-#dataset_rq2$presenza_lavoro = as.factor(ifelse(is.na(dataset_rq2$presenza_lavoro), 1, 0))
+dataset_rq2$presenza_lavoro = as.factor(ifelse(is.na(dataset_rq2$presenza_lavoro), 1, 0))
 mod_base <- lm(
   resa ~ factor(zone) + shock_agricolo + presenza_lavoro 
        #+ factor(pesticidi,      levels = c(2,1), labels = c("No","Sì"))
@@ -724,7 +724,7 @@ ggplot(dataset_rq2 %>% filter(shock_agricolo != "Nessuno Shock"),
 
 ## Resa predetta con intervalli di confidenza
 
-```{r, fig.height=3.5, fig.width=8, out.width="95%"}
+```{r, fig.height=3.5, fig.width=8, out.width="100%"}
 # 3. Predicted + intervalli di confidenza dal modello
 griglia_ci <- expand.grid(
   shock_agricolo = unique(dataset_rq2$shock_agricolo),
