@@ -368,10 +368,30 @@ mod_log_rq1 <- lm(
 ## Modello Multivariato logaritmico
 
 ```{r, fig.height=3.2, fig.width=9, out.width="95%"}
-plot_model(mod_log_rq1, show.values = TRUE, vline.color = "#B5121B",
-           colors = "#B5121B") +
-  theme_minimal() +
-  labs(title = "Determinanti della Resa Agricola — Log-OLS (RQ1)")
+library(broom)
+
+tidy(mod_log_rq1, conf.int = TRUE) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(term = recode(term,
+    "factor(pesticidi, levels = c(2, 1), labels = c(\"No\", \"Sì\"))Sì"      = "Pesticidi (Sì)",
+    "factor(animali_traino, levels = c(2, 1), labels = c(\"No\", \"Sì\"))Sì" = "Animali da Traino (Sì)",
+    "factor(attrezzature, levels = c(2, 1), labels = c(\"No\", \"Sì\"))Sì"   = "Attrezzature (Sì)",
+    "factor(fertilizzanti, levels = c(2, 1), labels = c(\"No\", \"Sì\"))Sì"  = "Fertilizzanti (Sì)",
+    "ampiezza_cat2" = "Ampiezza: cat2",
+    "ampiezza_cat3" = "Ampiezza: cat3",
+    "ampiezza_cat4" = "Ampiezza: cat4"
+  )) %>%
+  ggplot(aes(x = estimate, y = reorder(term, estimate))) +
+  geom_point(color = "#B5121B", size = 3) +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high),
+                 height = 0.2, color = "#B5121B") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "gray50") +
+  labs(
+    title    = "Determinanti della Resa Agricola — Log-OLS (RQ1)",
+    x        = "Coefficiente stimato",
+    y        = ""
+  ) +
+  theme_minimal(base_size = 9)
 ```
 
 ## Modello Multivariato, distribuzione della resa per input agricolo
@@ -406,6 +426,8 @@ dataset_rq1 %>%
   theme_minimal() +
   theme(legend.position = "none")
 ```
+
+## Confronto OLS vs Log-OLS
 
 ```{r}
 modelsummary(
