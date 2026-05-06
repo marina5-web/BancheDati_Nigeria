@@ -28,6 +28,9 @@ library(scales)
 library(performance)
 library(sandwich)
 library(see)
+library(kableExtra)
+library(broom)
+
 ```
 
 ---
@@ -730,7 +733,7 @@ ggplot(dataset_rq2 %>% filter(!is.na(motivo_assenza)),
 ### 7.3 Analisi multivariata
 
 ```{r}
-dataset_rq2$presenza_lavoro = as.factor(ifelse(is.na(dataset_rq2$presenza_lavoro), 1, 0))
+#dataset_rq2$presenza_lavoro = as.factor(ifelse(is.na(dataset_rq2$presenza_lavoro), 1, 0))
 mod_base <- lm(
   resa ~ factor(zone) + shock_agricolo + presenza_lavoro 
        #+ factor(pesticidi,      levels = c(2,1), labels = c("No","Sì"))
