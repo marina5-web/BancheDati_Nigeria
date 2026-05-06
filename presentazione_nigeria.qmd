@@ -48,6 +48,7 @@ library(scales)
 library(performance)
 library(sandwich)
 library(kableExtra)
+library(broom)
 
 data_dir <- file.path("data", "raw")
 ```
@@ -186,8 +187,6 @@ dataset_rq2 <- raccolto_pulito %>%
   filter(resa <= 5000, !is.na(macro_zone))
 ```
 
-# Dati e Domande di Ricerca
-
 ## Dati
 \begin{block}{Dataset Utilizzato}
     Nigeria General Household Survey (GHS-Panel) – Wave 4 (2018-2019)
@@ -216,9 +215,6 @@ In che misura l'utilizzo di input agricoli (pesticidi, fertilizzanti, attrezzatu
 \begin{block}{RQ2 – Dualismo Nord/Sud}
 Esistono differenze significative nelle caratteristiche della povertà stagionale tra Nord e Sud della Nigeria, in relazione agli shock subiti e alla partecipazione al lavoro agricolo?
 \end{block}
-
-
-# RQ1 – Input Agricoli e Resa
 
 ## Statistiche Descrittive: Variabile Dipendente
 
@@ -356,7 +352,6 @@ modelsummary(
   )
 ```
 
-## Confronto OLS vs Log-OLS
 
 ```{r}
 mod_log_rq1 <- lm(
@@ -368,6 +363,48 @@ mod_log_rq1 <- lm(
     ampiezza_cat,
   data = dataset_rq1
 )
+```
+
+## Modello Multivariato logaritmico
+
+```{r, fig.height=3.2, fig.width=9, out.width="95%"}
+plot_model(mod_log_rq1, show.values = TRUE, vline.color = "#B5121B",
+           colors = "#B5121B") +
+  theme_minimal() +
+  labs(title = "Determinanti della Resa Agricola — Log-OLS (RQ1)")
+```
+
+## Modello Multivariato, distribuzione della resa per input agricolo
+
+```{r, fig.height=3.2, fig.width=9, out.width="95%"}
+dataset_rq1 %>%
+  mutate(
+    pesticidi     = factor(pesticidi,      levels = c(1,2), labels = c("Sì","No")),
+    fertilizzanti = factor(fertilizzanti,  levels = c(1,2), labels = c("Sì","No")),
+    attrezzature  = factor(attrezzature,   levels = c(1,2), labels = c("Sì","No")),
+    animali_traino = factor(animali_traino, levels = c(1,2), labels = c("Sì","No"))
+  ) %>%
+  pivot_longer(cols = c(pesticidi, fertilizzanti, attrezzature, animali_traino),
+               names_to = "Input", values_to = "Utilizzo") %>%
+  mutate(Input = recode(Input,
+    pesticidi      = "Pesticidi",
+    fertilizzanti  = "Fertilizzanti",
+    attrezzature   = "Attrezzature",
+    animali_traino = "Animali da Traino"
+  )) %>%
+  ggplot(aes(x = Utilizzo, y = resa, fill = Utilizzo)) +
+  geom_violin(alpha = 0.6) +
+  geom_jitter(width = 0.15, alpha = 0.15, size = 0.5) +
+  geom_boxplot(width = 0.1, outlier.shape = NA, alpha = 0.8) +
+  scale_fill_manual(values = c("Sì" = "#B5121B", "No" = "#888888")) +
+  facet_wrap(~Input) +
+  labs(
+    title = "Distribuzione della Resa per Input Agricolo",
+    x     = "Utilizzo",
+    y     = "Resa (kg/ha)"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
 ```
 
 ```{r}
@@ -386,6 +423,43 @@ modelsummary(
   )
 ```
 
+```{r, fig.height=3.2, fig.width=9, out.width="95%"}
+coef_ols <- tidy(mod_totale, conf.int = TRUE) %>%
+  mutate(modello = "OLS")
+
+coef_log <- tidy(mod_log_rq1, conf.int = TRUE) %>%
+  mutate(modello = "Log-OLS")
+
+bind_rows(coef_ols, coef_log) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(term = recode(term,
+    "factor(pesticidi, levels = c(2, 1), labels = c(\"No\", \"Sì\"))Sì"      = "Pesticidi (Sì)",
+    "factor(animali_traino, levels = c(2, 1), labels = c(\"No\", \"Sì\"))Sì" = "Animali da Traino (Sì)",
+    "factor(attrezzature, levels = c(2, 1), labels = c(\"No\", \"Sì\"))Sì"   = "Attrezzature (Sì)",
+    "factor(fertilizzanti, levels = c(2, 1), labels = c(\"No\", \"Sì\"))Sì"  = "Fertilizzanti (Sì)",
+    "ampiezza_cat2" = "Ampiezza: Medio-Piccola",
+    "ampiezza_cat3" = "Ampiezza: Medio-Grande",
+    "ampiezza_cat4" = "Ampiezza: Grande"
+  )) %>%
+  ggplot(aes(x = estimate, y = term, color = modello, shape = modello)) +
+  geom_point(size = 3, position = position_dodge(width = 0.5)) +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high),
+                 height = 0.2,
+                 position = position_dodge(width = 0.5)) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "gray50") +
+  scale_color_manual(values = c("OLS" = "#888888", "Log-OLS" = "#B5121B"),
+                     name = "Modello") +
+  scale_shape_manual(values = c("OLS" = 16, "Log-OLS" = 17),
+                     name = "Modello") +
+  labs(
+    title    = "Confronto Coefficienti: OLS vs Log-OLS",
+    subtitle = "Con intervalli di confidenza al 95%",
+    x        = "Coefficiente stimato",
+    y        = ""
+  ) +
+  theme_minimal()
+```
+
 ## Diagnostica del Modello
 
 ```{r, fig.height=3, fig.width=8, out.width="95%"}
@@ -397,8 +471,6 @@ plot(vif_test) +
 
 \vspace{0.2cm}
 \small Tutti i VIF $< 2$: nessuna multicollinearità rilevante. Eteroschedasticità corretta con SE robusti HC3.
-
-# RQ2 – Nord vs Sud Nigeria
 
 ## Distribuzione della Resa per Zona
 
@@ -566,52 +638,96 @@ ggplot(dataset_rq2 %>% filter(!is.na(motivo_assenza)),
 ## Modello Multivariato con Interazioni
 
 ```{r}
-dataset_rq2 <- dataset_rq2 %>% mutate(zone = factor(zone))
-
-mod_log_rq2 <- lm(
-  log(resa + 1) ~ macro_zone * shock_agricolo + presenza_lavoro
-  + macro_zone * factor(pesticidi,      levels=c(2,1), labels=c("No","Sì"))
-  + macro_zone * factor(animali_traino, levels=c(2,1), labels=c("No","Sì"))
-  + macro_zone * factor(attrezzature,   levels=c(2,1), labels=c("No","Sì"))
-  + macro_zone * factor(fertilizzanti,  levels=c(2,1), labels=c("No","Sì")),
+dataset_rq2$presenza_lavoro = as.factor(ifelse(is.na(dataset_rq2$presenza_lavoro), 1, 0))
+mod_base <- lm(
+  resa ~ factor(zone) + shock_agricolo + presenza_lavoro 
+       #+ factor(pesticidi,      levels = c(2,1), labels = c("No","Sì"))
+       #+ factor(animali_traino, levels = c(2,1), labels = c("No","Sì"))
+       + factor(attrezzature,   levels = c(2,1), labels = c("No","Sì"))
+       + factor(fertilizzanti,  levels = c(2,1), labels = c("No","Sì")),
   data = dataset_rq2
 )
+summary(mod_base)
 ```
 
-```{r, fig.height=3.5, fig.width=8, out.width="95%"}
-plot_model(mod_log_rq2, show.values = TRUE, vline.color = "red",
-           value.size = 2.5, dot.size = 1.5) +
-  theme_minimal(base_size = 8) +
-  labs(title = "Coefficienti: Log-OLS con Interazioni Zona × Input/Shock")
+```{r}
+# Modello A - effetto di shock e presenza_lavoro per zona
+mod_A <- lm(
+  resa ~ macro_zone * shock_agricolo + 
+         macro_zone * presenza_lavoro,
+  data = dataset_rq2 %>% filter(!is.na(presenza_lavoro))
+)
+step_A <- step(mod_A, direction = "both", trace = FALSE)
+formula(step_A)
+
+# Modello B - solo sugli assenti, effetto del motivo per zona
+mod_B <- lm(
+  resa ~ macro_zone * shock_agricolo + 
+         macro_zone * motivo_assenza,
+  data = dataset_rq2 %>% filter(!is.na(motivo_assenza))
+)
+step_B <- step(mod_B, direction = "both", trace = FALSE)
+formula(step_B)
 ```
 
 ## Resa Predetta per Shock e Zona
 
-```{r, fig.height=3.2, fig.width=8, out.width="95%"}
-newdata <- expand.grid(
-  shock_agricolo  = unique(dataset_rq2$shock_agricolo),
-  macro_zone      = c("Nord", "Sud"),
-  pesticidi       = 2,
-  animali_traino  = 2,
-  attrezzature    = 2,
-  fertilizzanti   = 2,
-  presenza_lavoro = "Presente"
-)
-newdata$pred <- exp(predict(mod_log_rq2, newdata = newdata)) - 1
+```{r}
+griglia_finale <- expand.grid(
+  shock_agricolo = unique(dataset_rq2$shock_agricolo),
+  macro_zone     = c("Nord", "Sud")
+) %>%
+  mutate(predicted = predict(step_A, newdata = .))
 
-ggplot(newdata, aes(x = shock_agricolo, y = pred,
-                    color = macro_zone, group = macro_zone)) +
-  geom_point(size = 2.5) +
+ggplot(griglia_finale, aes(x = reorder(shock_agricolo, predicted),
+                            y = predicted,
+                            color = macro_zone, group = macro_zone)) +
+  geom_point(size = 3) +
   geom_line(linewidth = 0.8) +
+  coord_flip() +
   scale_color_manual(values = c("Nord" = "#2C5F2D", "Sud" = "#BB2E29"),
                      name = "Zona") +
-  coord_flip() +
-  labs(title = "Resa Predetta per Tipo di Shock: Nord vs Sud",
+  labs(title = "Effetto degli Shock sulla Resa: Nord vs Sud",
+       subtitle = "Valori predetti — interazione zona × shock significativa",
        x = "Tipo di Shock", y = "Resa Predetta (kg/ha)") +
-  theme_minimal(base_size = 9)
+  theme_minimal(base_size = 10)
 ```
 
-# Conclusioni
+```{r, fig.height=3.5, fig.width=8, out.width="95%"}
+# 1. Boxplot della resa per shock e zona
+ggplot(dataset_rq2 %>% filter(shock_agricolo != "Nessuno Shock"),
+       aes(x = shock_agricolo, y = resa, fill = macro_zone)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.8) +
+  coord_flip(xlim = NULL, ylim = c(0, 2000)) +
+  scale_fill_manual(values = c("Nord" = "#2C5F2D", "Sud" = "#BB2E29"),
+                    name = "Zona") +
+  labs(title = "Distribuzione della Resa per Shock e Zona",
+       subtitle = "Valori troncati a 2000 kg/ha per leggibilità",
+       x = "Tipo di Shock", y = "Resa (kg/ha)") +
+  theme_minimal(base_size = 10)
+```
+
+```{r, fig.height=3.5, fig.width=8, out.width="95%"}
+# 3. Predicted + intervalli di confidenza dal modello
+griglia_ci <- expand.grid(
+  shock_agricolo = unique(dataset_rq2$shock_agricolo),
+  macro_zone     = c("Nord", "Sud")
+)
+pred_ci <- predict(step_A, newdata = griglia_ci, interval = "confidence")
+griglia_ci <- cbind(griglia_ci, pred_ci)
+
+ggplot(griglia_ci, aes(x = reorder(shock_agricolo, fit),
+                        y = fit, color = macro_zone, group = macro_zone)) +
+  geom_point(size = 3) +
+  geom_line(linewidth = 0.8) +
+  geom_errorbar(aes(ymin = lwr, ymax = upr), width = 0.2) +
+  coord_flip() +
+  scale_color_manual(values = c("Nord" = "#2C5F2D", "Sud" = "#BB2E29"),
+                     name = "Zona") +
+  labs(title = "Resa Predetta con Intervalli di Confidenza al 95%",
+       x = "Tipo di Shock", y = "Resa Predetta (kg/ha)") +
+  theme_minimal(base_size = 10)
+```
 
 ## Sintesi dei Risultati
 

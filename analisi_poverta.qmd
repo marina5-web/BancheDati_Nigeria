@@ -418,7 +418,7 @@ mod_log_rq1 <- lm(
 ```
 
 ```{r}
-#coefficienti con intervalli di confidenza
+# Modello Multivariato logaritmico
 plot_model(mod_log_rq1, show.values = TRUE, vline.color = "#B5121B",
            colors = "#B5121B") +
   theme_minimal() +
