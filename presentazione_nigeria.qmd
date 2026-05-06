@@ -711,6 +711,39 @@ step_B <- step(mod_B, direction = "both", trace = FALSE)
 formula(step_B)
 ```
 
+## Selezione del Modello – Stepwise AIC
+
+\textbf{Modello completo:} zona $\times$ shock + zona $\times$ presenza\_lavoro
+
+\textbf{Modello selezionato:} zona + shock + zona $\times$ shock
+
+\vspace{0.3cm}
+
+```{r}
+tab_modelli <- data.frame(
+  Modello  = c("mod A (completo)", "step A (stepwise)"),
+  AIC      = round(c(AIC(mod_A),  AIC(step_A)),  1),
+  BIC      = round(c(BIC(mod_A),  BIC(step_A)),  1),
+  R2       = round(c(summary(mod_A)$r.squared,     summary(step_A)$r.squared),     3),
+  R2_adj   = round(c(summary(mod_A)$adj.r.squared, summary(step_A)$adj.r.squared), 3),
+  N_coef   = c(length(coef(mod_A)), length(coef(step_A)))
+)
+
+knitr::kable(tab_modelli,
+             col.names = c("Modello", "AIC", "BIC", "R²", "R² adj.", "N coeff."),
+             booktabs = TRUE,
+             escape = FALSE,
+             format = "latex",
+             longtable = FALSE) %>%
+  kableExtra::kable_styling(
+    font_size = 6,
+    full_width = TRUE,
+    latex_options = c("hold_position")
+  ) %>%
+  kableExtra::column_spec(1, width = "2cm") %>%
+  kableExtra::row_spec(4, bold = TRUE, color = "white", background = "#2C5F2D")
+```
+
 ## Boxplot della resa per shock e zona
 
 ```{r, fig.height=3.5, fig.width=8, out.width="95%"}
