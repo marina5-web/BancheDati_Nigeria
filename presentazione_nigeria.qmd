@@ -1,8 +1,8 @@
 ---
 title: "Analisi della Povertà Stagionale in Nigeria"
 subtitle: "Agricoltura, Shock e Mercato del Lavoro"
-author: ""
-date: ""
+author: "Damiano, Giorgio, Sangiorgi, Serenari, Valente"
+date: "07/05/26"
 institute: "Nigeria General Household Survey – Panel Wave 4 (Harvest 2019)"
 lang: it
 format:
@@ -10,7 +10,7 @@ format:
     theme: Madrid
     colortheme: seahorse
     fonttheme: structurebold
-    aspectratio: 169
+    aspectratio: 43
     navigation: horizontal
     section-titles: true
     include-in-header:
@@ -188,10 +188,12 @@ dataset_rq2 <- raccolto_pulito %>%
 ```
 
 ## Dati
-\begin{block}{Dataset Utilizzato}
-    Nigeria General Household Survey (GHS-Panel) – Wave 4 (2018-2019)
-  \end{block}
 
+\begin{columns}
+\begin{column}{0.48\textwidth}
+\begin{block}{Dataset Utilizzato}
+Nigeria General Household Survey (GHS-Panel) – Wave 4 (2018-2019)
+\end{block}
 \begin{itemize}
   \item \texttt{secta1} – Superfici dei plot
   \item \texttt{secta3i} – Raccolto (kg convertiti)
@@ -199,8 +201,10 @@ dataset_rq2 <- raccolto_pulito %>%
   \item \texttt{sect15a} – Shock subiti
   \item \texttt{sect3a} – Mercato del lavoro
 \end{itemize}
-\vspace{0.3cm}
-\alert{Resa calcolata:} kg/ha $= \frac{\text{raccolto}}{\text{ampiezza}} \times 10000$
+\end{column}
+\begin{column}{0.48\textwidth}
+\alert{Resa calcolata:} 
+$$kg/ha = \frac{\text{raccolto}}{\text{ampiezza}} \times 10000$$
 \end{column}
 \end{columns}
 
@@ -440,7 +444,7 @@ modelsummary(
   output      = "kableExtra"
 )%>%
   kable_styling(
-    font_size = 5, full_width = FALSE, position = "center",
+    font_size = 4.5, full_width = FALSE, position = "center",
     latex_options = "hold_position"
   )
 ```
@@ -657,10 +661,11 @@ ggplot(dataset_rq2 %>% filter(!is.na(motivo_assenza)),
   theme_minimal(base_size = 9)
 ```
 
-## Modello Multivariato con Interazioni
 
 ```{r}
-dataset_rq2$presenza_lavoro = as.factor(ifelse(is.na(dataset_rq2$presenza_lavoro), 1, 0))
+#| output: false
+#| echo: false
+#dataset_rq2$presenza_lavoro = as.factor(ifelse(is.na(dataset_rq2$presenza_lavoro), 1, 0))
 mod_base <- lm(
   resa ~ factor(zone) + shock_agricolo + presenza_lavoro 
        #+ factor(pesticidi,      levels = c(2,1), labels = c("No","Sì"))
@@ -673,6 +678,8 @@ summary(mod_base)
 ```
 
 ```{r}
+#| output: false
+#| echo: false
 # Modello A - effetto di shock e presenza_lavoro per zona
 mod_A <- lm(
   resa ~ macro_zone * shock_agricolo + 
@@ -692,28 +699,7 @@ step_B <- step(mod_B, direction = "both", trace = FALSE)
 formula(step_B)
 ```
 
-## Resa Predetta per Shock e Zona
-
-```{r}
-griglia_finale <- expand.grid(
-  shock_agricolo = unique(dataset_rq2$shock_agricolo),
-  macro_zone     = c("Nord", "Sud")
-) %>%
-  mutate(predicted = predict(step_A, newdata = .))
-
-ggplot(griglia_finale, aes(x = reorder(shock_agricolo, predicted),
-                            y = predicted,
-                            color = macro_zone, group = macro_zone)) +
-  geom_point(size = 3) +
-  geom_line(linewidth = 0.8) +
-  coord_flip() +
-  scale_color_manual(values = c("Nord" = "#2C5F2D", "Sud" = "#BB2E29"),
-                     name = "Zona") +
-  labs(title = "Effetto degli Shock sulla Resa: Nord vs Sud",
-       subtitle = "Valori predetti — interazione zona × shock significativa",
-       x = "Tipo di Shock", y = "Resa Predetta (kg/ha)") +
-  theme_minimal(base_size = 10)
-```
+## Boxplot della resa per shock e zona
 
 ```{r, fig.height=3.5, fig.width=8, out.width="95%"}
 # 1. Boxplot della resa per shock e zona
@@ -728,6 +714,8 @@ ggplot(dataset_rq2 %>% filter(shock_agricolo != "Nessuno Shock"),
        x = "Tipo di Shock", y = "Resa (kg/ha)") +
   theme_minimal(base_size = 10)
 ```
+
+## Resa predetta con intervalli di confidenza
 
 ```{r, fig.height=3.5, fig.width=8, out.width="95%"}
 # 3. Predicted + intervalli di confidenza dal modello
@@ -787,5 +775,3 @@ Gli shock deprimono la resa in modo significativo. Strumenti come l'\textit{inde
 \begin{block}{03 – Politiche geograficamente differenziate}
 Il dualismo Nord/Sud richiede interventi distinti: gestione idrica al Sud, diversificazione colturale al Nord.
 \end{block}
-
-
