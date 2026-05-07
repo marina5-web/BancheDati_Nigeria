@@ -240,10 +240,9 @@ dataset_rq1 %>%
   kableExtra::kable_styling(font_size = 8, latex_options = "hold_position")
 ```
 
-
-## Statistiche Descrittive: Input Agricoli
-
-```{r, results='asis'}
+---
+```{r,include=FALSE}
+#Statistiche Descrittive: Input Agricoli
 dataset_rq1 %>%
   select(pesticidi, animali_traino, attrezzature, fertilizzanti) %>%
   mutate(across(everything(), ~factor(.x, levels = c(2,1), labels = c("No", "Sì")))) %>%
